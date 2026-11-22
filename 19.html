@@ -5,11 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第19章 单调栈与单调队列</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端的布局兑底：不依赖外部样式表也能不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        table { max-width: 100%; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x, .eq-scroll, [data-math-scroll] { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>💻 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 数组与哈希表</a></li>
@@ -41,14 +56,40 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>单调栈思想</h2>
+        <h1>单调栈与单调队列：弹出时定答案</h1>
+        <p class="lede">单调栈的难点不是“会不会写栈”，而是<strong>说清楚每个元素什么时候进、什么时候出，以及弹出的那一刻为什么就能定答案</strong>。把这一点讲透以后，“下一个更大元素”“接雨水”“滑动窗口最大值”都是同一套机制的不同译本。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#idea">单调栈思想</a></li>
+                <li><a href="#template">单调栈模板</a></li>
+                <li><a href="#circular-rain">循环数组与接雨水</a></li>
+                <li><a href="#deque">单调队列</a></li>
+                <li><a href="#pitfalls">坑点与总结</a></li>
+                <li><a href="#refs">出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="idea">单调栈思想</h2>
 
         <p>大家好。不知道你们在刷题时有没有遇到过这样一种感觉：明明题目就是在一维数组上找下一个更大的元素，也能想到用栈，但代码就是写不对——要么下标搞反了，要么循环条件弄混了。如果是这样，别担心，今天这一章就是为你准备的。我们将系统地讲解<strong>单调栈（Monotonic Stack）</strong>和<strong>单调队列（Monotonic Queue）</strong>，它们是处理"下一个更大/更小"类问题和滑动窗口最值问题的利器。</p>
 
         <p>先说单调栈的核心思想：<strong>维护一个栈，使栈内元素保持单调递增或单调递减</strong>。遍历数组时，每当新元素破坏了单调性，就不断弹出栈顶元素——而弹出的那一刻，往往就能确定答案。这个"弹出时定答案"的机制，是单调栈最精妙的设计。</p>
+
+        <div class="eq-scroll" data-math-scroll tabindex="0" role="region" aria-label="单调栈均摊复杂度论证公式，可横向滚动">
+            <math display="block" aria-label="均摊分析：每个下标被压入至多一次、被弹出至多一次，所以总操作数不超过 2n，总时间复杂度为 n 的大 O">
+                <mrow>
+                    <mo>#</mo><mtext>push</mtext><mo>≤</mo><mi>n</mi><mo>,</mo><mspace width="0.7em"></mspace>
+                    <mo>#</mo><mtext>pop</mtext><mo>≤</mo><mi>n</mi>
+                    <mo>⇒</mo><mi>O</mi><mo>(</mo><mi>n</mi><mo>)</mo>
+                </mrow>
+            </math>
+        </div>
+        <p class="cite">这两个不等式就是单调栈/单调队列能到 O(n) 的全部理由：内层 <code>while</code> 看起来是双层循环，但每个下标一生只入队（入栈）一次、也只会被弹出一次，所以内层总执行次数不超过 n。这是一种典型的<strong>均摊分析</strong>，与滑动窗口的“left 只右移”是同一个道理。</p>
 
         <p>我们用一张表直观对比两种单调栈的场景：</p>
 
@@ -77,9 +118,38 @@
             </tbody>
         </table>
 
-        <p>面试中约 80% 的单调栈题目是"下一个更大元素"类的，所以<strong>单调递减栈</strong>是最常用的。接下来我们从最基础的模板题开始。</p>
+        <p>面试中最常见的单调栈题型是"下一个更大元素"类，所以<strong>单调递减栈</strong>是最常用的。接下来我们从最基础的模板题开始。</p>
 
-        <h2>单调栈模板</h2>
+        <h2 id="template">单调栈模板</h2>
+
+        <figure id="fig-pop-answer">
+            <svg viewBox="0 0 360 252" role="img" aria-label="递减栈在每日温度题目上弹出定答案的过程">
+                <title>每日温度前 6 项：新元素更高时弹出栈顶，弹出的那一刻该下标的答案就等于下标差</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="15" y="16" font-size="12" font-weight="700" fill="#7c2d12">每日温度（LeetCode 739 官方示例前 6 项）</text>
+                    <rect x="15" y="32" width="50" height="48" rx="6" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="71" y="32" width="50" height="48" rx="6" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="127" y="32" width="50" height="48" rx="6" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="183" y="32" width="50" height="48" rx="6" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="239" y="32" width="50" height="48" rx="6" fill="#fee2e2" stroke="#ef4444"></rect>
+                    <rect x="295" y="32" width="50" height="48" rx="6" fill="#dcfce7" stroke="#22c55e"></rect>
+                    <text x="40" y="64" text-anchor="middle" font-size="13" fill="#334155"><tspan x="40" y="46" font-size="9" fill="#94a3b8">0</tspan>73</text>
+                    <text x="96" y="64" text-anchor="middle" font-size="13" fill="#334155"><tspan x="96" y="46" font-size="9" fill="#94a3b8">1</tspan>74</text>
+                    <text x="152" y="64" text-anchor="middle" font-size="13" fill="#334155"><tspan x="152" y="46" font-size="9" fill="#94a3b8">2</tspan>75</text>
+                    <text x="208" y="64" text-anchor="middle" font-size="13" fill="#7c2d12"><tspan x="208" y="46" font-size="9" fill="#94a3b8">3</tspan>71</text>
+                    <text x="264" y="64" text-anchor="middle" font-size="13" fill="#b91c1c"><tspan x="264" y="46" font-size="9" fill="#94a3b8">4</tspan>69</text>
+                    <text x="320" y="64" text-anchor="middle" font-size="13" fill="#166534"><tspan x="320" y="46" font-size="9" fill="#94a3b8">5</tspan>72</text>
+                    <text x="15" y="112" font-size="11.5" fill="#475569">① 下标 0、1、2 依次入栈，栈内值递减：[73, 74, 75]</text>
+                    <text x="15" y="134" font-size="11.5" fill="#475569">② i=3（71）、i=4（69）比栈顶小 → 直接入栈</text>
+                    <text x="15" y="156" font-size="11.5" fill="#b91c1c">③ i=5（72）比栈顶 69 大 → 弹出下标 4，答案[4] = 5−4 = 1</text>
+                    <text x="15" y="178" font-size="11.5" fill="#7c2d12">④ 72 也比 71 大 → 弹出下标 3，答案[3] = 5−3 = 2</text>
+                    <text x="15" y="200" font-size="11.5" fill="#166534">⑤ 72 &lt; 75，停下 → 下标 5 入栈，继续扫描</text>
+                    <text x="15" y="226" font-size="11" fill="#64748b">弹出的那一刻，右侧第一个更大值就是当前元素 → 直接定答案</text>
+                    <text x="15" y="246" font-size="11" fill="#64748b">每个下标入栈、出栈各至多一次 → 总时间 O(n)</text>
+                </g>
+            </svg>
+            <figcaption>递减栈在“每日温度”上的五个动作。橙色与红色是即将被弹出的下标（值 71 与 69），绿色是新来的 72。关键点在于：一个下标被弹出的时机，恰好是“它的下一个更高温度出现了”的时机，所以弹出的那一行就是它答案的计算式。例中的数值与答案均取自 LeetCode 739 的官方示例。</figcaption>
+        </figure>
 
         <h3>下一个更大元素 I（LeetCode 496）</h3>
 
@@ -136,7 +206,17 @@
             <strong>通用框架：</strong>当我们遍历数组时，维护一个栈（存下标或值），确保栈内元素是单调的。当新元素破坏了单调性时，不断弹出栈顶并在弹出时记录答案。最后将当前元素入栈。
         </div>
 
-        <h2>循环数组与接雨水</h2>
+        <div class="demo" id="demo-temps">
+            <p><strong>可交互演示：每日温度单步执行</strong>（LeetCode 739 官方示例，答案 [1, 1, 4, 2, 1, 1, 0, 0]）</p>
+            <div class="demo-controls" role="group" aria-label="每日温度演示控制">
+                <button type="button" id="tmp-prev">上一步</button>
+                <button type="button" id="tmp-next">下一步</button>
+                <button type="button" id="tmp-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="tmp-out" role="status" aria-live="polite"></pre>
+        </div>
+
+        <h2 id="circular-rain">循环数组与接雨水</h2>
 
         <h3>下一个更大元素 II（LeetCode 503）</h3>
 
@@ -187,13 +267,46 @@
             <strong>踩坑提醒：</strong>接雨水的单调栈解法中，<code>if not stack: break</code> 这一行极易被遗漏。想象一下，当栈中只有一个元素且当前柱子更高时，弹出后栈为空，没有左边界——这时候就必须 break，否则会报 IndexError。我第一次写时就漏了这行，debug 了整整一小时。
         </div>
 
-        <h2>单调队列</h2>
+        <h2 id="deque">单调队列</h2>
 
         <p>说完单调栈，我们来说说它的"近亲"——<strong>单调队列</strong>。单调队列的核心应用场景只有一个，但极其经典：<strong>固定窗口内的最值问题</strong>。</p>
 
         <h3>滑动窗口最大值（LeetCode 239）</h3>
 
         <p>给定一个数组和滑动窗口大小 <code>k</code>，找出所有滑动窗口中的最大值。这道题的难度是 Hard，但用单调队列可以做到 <code>O(n)</code> 时间。</p>
+
+        <figure id="fig-deque">
+            <svg viewBox="0 0 360 244" role="img" aria-label="单调队列在新元素到来与窗口滑动时的进出队示意图">
+                <title>滑动窗口最大值：队首始终是窗口内最大值，新元素更大时从队尾弹出较小者，滑出窗口的下标从队首移除</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="14" y="16" font-size="12" font-weight="700" fill="#7c2d12">nums = [1, 3, −1, −3, 5, 3, 6, 7]，k = 3</text>
+                    <rect x="14" y="28" width="40" height="42" rx="5" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="57" y="28" width="40" height="42" rx="5" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="100" y="28" width="40" height="42" rx="5" fill="#e0f2fe" stroke="#0ea5e9"></rect>
+                    <rect x="143" y="28" width="40" height="42" rx="5" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="186" y="28" width="40" height="42" rx="5" fill="#dcfce7" stroke="#22c55e"></rect>
+                    <rect x="229" y="28" width="40" height="42" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="272" y="28" width="40" height="42" rx="5" fill="#fee2e2" stroke="#ef4444"></rect>
+                    <rect x="315" y="28" width="40" height="42" rx="5" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <text x="34" y="58" text-anchor="middle" font-size="12" fill="#334155"><tspan x="34" y="42" font-size="9" fill="#94a3b8">0</tspan>1</text>
+                    <text x="77" y="58" text-anchor="middle" font-size="12" fill="#334155"><tspan x="77" y="42" font-size="9" fill="#94a3b8">1</tspan>3</text>
+                    <text x="120" y="58" text-anchor="middle" font-size="12" fill="#0c4a6e"><tspan x="120" y="42" font-size="9" fill="#94a3b8">2</tspan>−1</text>
+                    <text x="163" y="58" text-anchor="middle" font-size="12" fill="#334155"><tspan x="163" y="42" font-size="9" fill="#94a3b8">3</tspan>−3</text>
+                    <text x="206" y="58" text-anchor="middle" font-size="12" fill="#166534"><tspan x="206" y="42" font-size="9" fill="#94a3b8">4</tspan>5</text>
+                    <text x="249" y="58" text-anchor="middle" font-size="12" fill="#7c2d12"><tspan x="249" y="42" font-size="9" fill="#94a3b8">5</tspan>3</text>
+                    <text x="292" y="58" text-anchor="middle" font-size="12" fill="#b91c1c"><tspan x="292" y="42" font-size="9" fill="#94a3b8">6</tspan>6</text>
+                    <text x="335" y="58" text-anchor="middle" font-size="12" fill="#334155"><tspan x="335" y="42" font-size="9" fill="#94a3b8">7</tspan>7</text>
+                    <text x="14" y="96" font-size="11.5" fill="#166534">① 新元素 5 比队尾的 −3、−1 都大 → 从队尾弹出它们</text>
+                    <text x="14" y="118" font-size="11.5" fill="#475569">队里只剩 [1→3, 4→5]，队首 3 仍是当前窗口最大值</text>
+                    <text x="14" y="140" font-size="11.5" fill="#b91c1c">② 新元素 6 到来 → 弹出队尾的 3（下标 5），队列变 [4→5, 6→6]</text>
+                    <text x="14" y="162" font-size="11.5" fill="#0c4a6e">③ 滑出窗口的下标从队首移除：i − k = 3，下标 3 已越界</text>
+                    <text x="14" y="184" font-size="11.5" fill="#475569">每个窗口记录一次队首值 → 输出 [3, 3, 5, 5, 6, 7]</text>
+                    <text x="14" y="210" font-size="11" fill="#64748b">每个下标最多入队一次、出队一次 → 均摊 O(n)</text>
+                    <text x="14" y="232" font-size="11" fill="#64748b">与单调栈的区别：多了“从队首删除过期下标”这一步</text>
+                </g>
+            </svg>
+            <figcaption>单调队列与单调栈的机制几乎相同，区别只在两端：新元素较大时从<strong>队尾</strong>弹出较小者（同单调栈），窗口滑出时从<strong>队首</strong>删除过期下标（单调栈没有这一步）。绿色是最新入队的最大值 5，红色是入队时把较小者弹掉的 6，蓝色是被窗口淘汰的下标 2。数组、k 与输出均取自 LeetCode 239 官方示例。</figcaption>
+        </figure>
 
         <p>思路是我们维护一个<strong>双端队列（deque）</strong>，队首到队尾保持单调递减。队列里存下标。每来一个新元素：</p>
 
@@ -232,7 +345,7 @@
             <strong>单调栈 vs 单调队列：</strong>单调栈解决的是"下一个更大/更小"问题，用普通栈（list）实现；单调队列解决的是"滑动窗口最值"问题，用双端队列（deque）实现。前者是"全局"的，后者是"窗口"的——注意区分应用场景。
         </div>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <p>单调栈和单调队列的核心代码都很短，但细节极多。我总结几个高频踩坑点。</p>
 
@@ -284,8 +397,33 @@
         <p>三种解法都是 <code>O(n)</code> 时间，但双指针空间最优。我个人面试时偏好双指针——代码短、空间省、不易出错。但单调栈解法体现了"数据结构的思维"，面试官有时专门想考察你能不能想到用栈来处理这种嵌套结构。</p>
 
         <div class="highlight">
-            <strong>学习建议：</strong>单调栈的题目模式非常固定——80% 是"下一个更大元素"变体。先把 496、739、503 这三道刷熟，再攻克 42 和 84（柱状图中最大的矩形）。刷完这五道题，单调栈就基本毕业了。至于单调队列，239 是唯一需要熟练掌握的题目。
+            <strong>学习建议：</strong>单调栈的题目模式相当固定，多数是“下一个更大元素”的变体。先把 496、739、503 这三道练熟，再攻 42 和 84（柱状图中最大的矩形）。至于单调队列，先把 239 写熟，它是这类窗口最值问题的基准题。
         </div>
+
+        <h2 id="refs">出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>题型</th><th>出处</th><th>前提 / 例外</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>下一个更大元素（哈希映射）</td><td>LeetCode 496：nums1 是 nums2 的子集，值互不相同</td><td>值重复时不能直接用值→答案的哈希映射</td></tr>
+                    <tr><td>每日温度</td><td>LeetCode 739：要求与下一个更高温度的<em>下标差</em></td><td>末尾没有更高温度的下标答案为 0</td></tr>
+                    <tr><td>循环数组的下一个更大元素</td><td>LeetCode 503：数组是环形的</td><td>循环遍历两轮以避免漏掉跨越末尾的元素</td></tr>
+                    <tr><td>接雨水（单调栈）</td><td>LeetCode 42：按“行”计算每个凹槽容量</td><td>存在 O(1) 空间的双指针解法，时间同为 O(n)</td></tr>
+                    <tr><td>柱状图中最大的矩形</td><td>LeetCode 84：需要找左右两边第一根更矮的柱</td><td>本质是“下一个更小元素”×2</td></tr>
+                    <tr><td>滑动窗口最大值</td><td>LeetCode 239：窗口大小固定为 k</td><td>两端都要操作，必须用双端队列而不是普通栈</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>两张图中的数组、k 与输出均取自 LeetCode 739 与 239 的官方示例（均为官方示例数据）；但图示只画出了部分步骤，完整过程请用演示或断言跑一遍。</li>
+            <li>O(n) 是<strong>均摊</strong>结论：单次操作仍可能弹出很多元素，只是总弹出次数被 n 限住。</li>
+            <li>本章不涉及带权图上的单调结构（如 Dijkstra 的堆优化），也不讨论线段树/树状数组提供的“区间最值”替代方案（见第 22 章）。</li>
+        </ul>
 
         <p>好了，单调栈与单调队列的内容就到这里。下一章我们将进入两个非常有趣的话题——<strong>Trie 前缀树与位运算</strong>。Trie 是处理字符串前缀匹配的神器，位运算则是各种奇淫技巧的聚集地。我们下一章见！</p>
 
@@ -294,8 +432,60 @@
             <a href="index.html">📖 返回目录</a>
             <a href="20.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var temps = [73, 74, 75, 71, 69, 72, 76, 73];
+    var n = temps.length, res = new Array(n).fill(0), stack = [], states = [];
+
+    function snapRes() { return '[' + res.join(', ') + ']'; }
+    function snapStack() {
+        if (!stack.length) return '（空）';
+        return '[' + stack.map(function (i) { return i + '→' + temps[i]; }).join(', ') + ']（栈底…栈顶）';
+    }
+    states.push({ res: snapRes(), stack: snapStack(), msg: '初始：答案数组全为 0，栈为空。' });
+
+    for (var i = 0; i < n; i++) {
+        var pops = [];
+        while (stack.length && temps[i] > temps[stack[stack.length - 1]]) {
+            var top = stack.pop();
+            res[top] = i - top;
+            pops.push('下标 ' + top + '（值 ' + temps[top] + '）→ 答案 = ' + i + ' − ' + top + ' = ' + res[top]);
+        }
+        stack.push(i);
+        var msg = 'i = ' + i + '（温度 ' + temps[i] + '）：';
+        msg += pops.length ? pops.join('；') + '。' : '栈内没有更小的值，无需弹出。';
+        msg += '然后把下标 ' + i + ' 入栈。';
+        states.push({ res: snapRes(), stack: snapStack(), msg: msg });
+    }
+    states.push({
+        res: snapRes(), stack: snapStack(),
+        msg: '扫描结束，栈内剩下的下标没有下一个更高温度，保持 0。最终答案 ' + snapRes() + '（与 LeetCode 739 官方示例输出一致）。'
+    });
+
+    var pos = 0;
+    var out = document.getElementById('tmp-out');
+    function render() {
+        var st = states[pos];
+        out.textContent = st.msg + '\n\n栈 = ' + st.stack + '\n答案 = ' + st.res
+            + '\n\n进度 ' + (pos + 1) + '/' + states.length;
+    }
+    document.getElementById('tmp-next').addEventListener('click', function () {
+        if (pos < states.length - 1) pos++;
+        render();
+    });
+    document.getElementById('tmp-prev').addEventListener('click', function () {
+        if (pos > 0) pos--;
+        render();
+    });
+    document.getElementById('tmp-reset').addEventListener('click', function () {
+        pos = 0;
+        render();
+    });
+    render();
+})();
+</script>
 </body>
 </html>
