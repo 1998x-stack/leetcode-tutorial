@@ -148,10 +148,59 @@ th {
     background: #ffedd5; transform: translateY(-2px);
 }
 
+/* === Article components (figures, demos, citations) === */
+main.main-content { min-width: 0; }
+
+h1 {
+    font-size: 1.85rem; line-height: 1.3; color: #7c2d12;
+    border-bottom: 3px solid #f97316; padding-bottom: 10px; margin: 0 0 14px;
+}
+
+.lede { font-size: 1.05rem; color: #475569; }
+
+.toc {
+    background: #fffbf5; border: 1px solid #fed7aa;
+    border-radius: 16px; padding: 14px 18px; margin: 16px 0;
+}
+.toc h2 { font-size: 1rem; margin: 0 0 8px; border: none; padding: 0; color: #9a3412; }
+.toc ol { margin-left: 18px; }
+
+figure {
+    margin: 20px 0; padding: 14px; background: #fffbf5;
+    border: 1px solid #fed7aa; border-radius: 18px;
+}
+figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+figcaption { margin-top: 10px; font-size: .88rem; line-height: 1.65; color: #7c2d12; }
+
+.scroll-x { overflow-x: auto; }
+
+.demo {
+    background: #f8fafc; border: 1px solid #cbd5e1;
+    border-radius: 18px; padding: 16px; margin: 18px 0;
+}
+.demo-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.demo-controls button {
+    padding: 6px 14px; border-radius: 999px; border: 1px solid #ea580c;
+    background: #fff; color: #9a3412; font-weight: 600; cursor: pointer; font-size: .85rem;
+}
+.demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+.demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+.demo pre { margin: 0; }
+.cite { font-size: .82rem; color: #64748b; }
+.eq { text-align: center; margin: 14px 0; }
+
 /* === Responsive === */
 @media (max-width: 768px) {
     .container { grid-template-columns: 1fr; }
     .sidebar { border-right: none; border-bottom: 2px solid #fed7aa; }
     body { padding: 10px; }
     .main-content { padding: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+}
+
+@media print {
+    .sidebar, .demo-controls, .footer-nav { display: none; }
 }
