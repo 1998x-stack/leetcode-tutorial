@@ -5,11 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第6章 滑动窗口</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端的布局兑底：不依赖外部样式表也能不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x, .eq-scroll, [data-math-scroll] { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>💻 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 数组与哈希表</a></li>
@@ -41,12 +55,27 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>滑动窗口思想</h2>
+        <h1>滑动窗口：增量维护一个连续区间</h1>
+        <p class="lede">滑动窗口常被当成“双指针的另一个模板”背下来，其实它只有一个核心机制：<strong>只增量更新窗口两端的变化量，而不重算整个区间</strong>。把这个机制理解透，“求最长”和“求最短”的更新时机差异、以及“恰好 K”为何能用容斥拆开，就都是同一个结论的副作用。</p>
 
-        <p>大家好，我是你们的讲师。今天我们要聊的<strong>滑动窗口（Sliding Window）</strong>，可以看作是上一章双指针的"同向指针"的进阶版。滑动窗口专门用于解决<strong>连续子数组 / 子串</strong>问题——这是算法面试中出现频率最高的题型之一。</p>
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#idea">滑动窗口的核心机制</a></li>
+                <li><a href="#fixed">定长窗口</a></li>
+                <li><a href="#variable">不定长窗口：最长与最短</a></li>
+                <li><a href="#exact-k">恰好 K 型与容斥</a></li>
+                <li><a href="#pitfalls">坑点与总结</a></li>
+                <li><a href="#refs">出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="idea">滑动窗口思想</h2>
+
+        <p>大家好，我是你们的讲师。今天我们要聊的<strong>滑动窗口（Sliding Window）</strong>，可以看作是上一章双指针的"同向指针"的进阶版。它的适用面很明确：只要题目间的是<strong>连续子数组 / 子串</strong>，而且区间指标可以增量维护，就可以先拿滑动窗口试。</p>
 
         <p>滑动窗口的核心理念是：<strong>维护一个窗口（连续区间），通过不断调整窗口的左右边界来搜索最优解</strong>。窗口整体从左向右移动，每个元素进入窗口一次、离开窗口一次，因此总时间复杂度是 O(n) 而不是 O(n²)。</p>
 
@@ -56,7 +85,7 @@
             <strong>核心洞察：</strong>滑动窗口的本质是<strong>避免重复计算</strong>。暴力法每次重新计算子数组，而滑动窗口利用了相邻子数组之间的重叠部分，只更新变化的两端。这种"增量计算"的思维在很多算法中都有体现。
         </div>
 
-        <h2>定长窗口模板</h2>
+        <h2 id="fixed">定长窗口模板</h2>
 
         <p>定长窗口是滑动窗口中最简单的形式——窗口大小固定为 k，每次移动一步，更新窗口内的结果。</p>
 
@@ -76,6 +105,63 @@
 
         <p>关键操作就是 <code>window_sum += nums[i] - nums[i - k]</code>——加进新元素，移除旧元素，避免了每次重新求和。这个"增量更新"的思想是滑动窗口效率的来源：<strong>不要重新造轮子，利用好已经算好的结果</strong>。</p>
 
+        <div class="eq-scroll" data-math-scroll tabindex="0" role="region" aria-label="定长窗口的增量更新恒等式，可横向滚动">
+            <math display="block" aria-label="定长窗口恒等式：第 i 个窗口的元素和等于上一个窗口的和，加上新进入的元素，再减去离开窗口的元素">
+                <mrow>
+                    <msub><mi>S</mi><mi>i</mi></msub><mo>=</mo>
+                    <msub><mi>S</mi><mrow><mi>i</mi><mo>−</mo><mn>1</mn></mrow></msub><mo>+</mo>
+                    <msub><mi>nums</mi><mrow><mi>i</mi><mo>+</mo><mi>k</mi><mo>−</mo><mn>1</mn></mrow></msub><mo>−</mo>
+                    <msub><mi>nums</mi><mrow><mi>i</mi><mo>−</mo><mn>1</mn></mrow></msub>
+                </mrow>
+            </math>
+        </div>
+        <p class="cite">这个恒等式就是滑动窗口复杂度从 O(n·k) 降到 O(n) 的全部依据：每个元素只在一进一出时各被加减一次。注意它成立的前提是窗口大小恒定；不定长窗口没有这个形式，但“一进一出”的收支思路不变。</p>
+
+        <figure id="fig-fixed-window">
+            <svg viewBox="0 0 360 236" role="img" aria-label="定长窗口从 i=0 滑到 i=1 时的增量更新示意图">
+                <title>定长窗口滑动一步：下标 0 离开、下标 5 进入，窗口和从 11 变为 14，无需重算 5 个元素</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="8" y="16" font-size="12" font-weight="700" fill="#7c2d12">nums（教学示意数据），窗口大小 k = 5</text>
+                    <text x="8" y="34" font-size="11" fill="#c2410c">窗口 i=0：sum = 1+3+2+6−1 = 11</text>
+                    <line x1="8" y1="42" x2="164" y2="42" stroke="#f97316" stroke-width="2"></line>
+                    <rect x="8" y="52" width="36" height="42" rx="5" fill="#fee2e2" stroke="#ef4444"></rect>
+                    <rect x="47" y="52" width="36" height="42" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="86" y="52" width="36" height="42" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="125" y="52" width="36" height="42" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="164" y="52" width="36" height="42" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="203" y="52" width="36" height="42" rx="5" fill="#dcfce7" stroke="#86efac"></rect>
+                    <rect x="242" y="52" width="36" height="42" rx="5" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="281" y="52" width="36" height="42" rx="5" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="320" y="52" width="36" height="42" rx="5" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <text x="26" y="72" text-anchor="middle" font-size="13" fill="#7c2d12">1</text>
+                    <text x="65" y="72" text-anchor="middle" font-size="13" fill="#7c2d12">3</text>
+                    <text x="104" y="72" text-anchor="middle" font-size="13" fill="#7c2d12">2</text>
+                    <text x="143" y="72" text-anchor="middle" font-size="13" fill="#7c2d12">6</text>
+                    <text x="182" y="72" text-anchor="middle" font-size="13" fill="#7c2d12">−1</text>
+                    <text x="221" y="72" text-anchor="middle" font-size="13" fill="#166534">4</text>
+                    <text x="260" y="72" text-anchor="middle" font-size="13" fill="#7c2d12">1</text>
+                    <text x="299" y="72" text-anchor="middle" font-size="13" fill="#7c2d12">8</text>
+                    <text x="338" y="72" text-anchor="middle" font-size="13" fill="#7c2d12">2</text>
+                    <text x="26" y="88" text-anchor="middle" font-size="9" fill="#94a3b8">0</text>
+                    <text x="65" y="88" text-anchor="middle" font-size="9" fill="#94a3b8">1</text>
+                    <text x="104" y="88" text-anchor="middle" font-size="9" fill="#94a3b8">2</text>
+                    <text x="143" y="88" text-anchor="middle" font-size="9" fill="#94a3b8">3</text>
+                    <text x="182" y="88" text-anchor="middle" font-size="9" fill="#94a3b8">4</text>
+                    <text x="221" y="88" text-anchor="middle" font-size="9" fill="#94a3b8">5</text>
+                    <text x="260" y="88" text-anchor="middle" font-size="9" fill="#94a3b8">6</text>
+                    <text x="299" y="88" text-anchor="middle" font-size="9" fill="#94a3b8">7</text>
+                    <text x="338" y="88" text-anchor="middle" font-size="9" fill="#94a3b8">8</text>
+                    <text x="8" y="118" font-size="11" fill="#166534">窗口 i=1：sum = 11 + 4 − 1 = 14</text>
+                    <line x1="47" y1="126" x2="203" y2="126" stroke="#22c55e" stroke-width="2"></line>
+                    <text x="8" y="152" font-size="12" fill="#b91c1c">红色：下标 0 离开窗口 → sum 减 1</text>
+                    <text x="8" y="172" font-size="12" fill="#166534">绿色：下标 5 进入窗口 → sum 加 4</text>
+                    <text x="8" y="196" font-size="12" fill="#475569">净变化 +3，一步完成；重算 5 个元素则要 5 次加法</text>
+                    <text x="8" y="222" font-size="11" fill="#64748b">每个元素全程只被加减一次 → 总时间 O(n)</text>
+                </g>
+            </svg>
+            <figcaption>定长窗口滑动一步的全部动作：移除离开的 nums[0]、加入进入的 nums[5]，其余 3 个元素完全不动。本例中的数组为<strong>教学示意</strong>数据（3+2+6−1+4 = 14 可直接验算），用来说明增量更新的形。真实题目的数组与 k 由题设给定。</figcaption>
+        </figure>
+
         <p>定长窗口的通用框架：</p>
 
         <pre><code># 初始化窗口
@@ -91,7 +177,7 @@ for i in range(len(nums)):
             <strong>适用场景：</strong>题目明确说"长度为 k 的子数组/子串"，或者问题可以转化为固定大小的窗口来处理。注意如果 k > len(nums) 的边界处理。
         </div>
 
-        <h2>不定长窗口 — 求最长 / 最短</h2>
+        <h2 id="variable">不定长窗口 — 求最长 / 最短</h2>
 
         <p>不定长窗口是最灵活也最常用的滑动窗口形式。窗口大小不固定，根据条件动态调整右边界（扩展）和左边界（收缩）。</p>
 
@@ -114,7 +200,51 @@ for i in range(len(nums)):
 
         <p>这个模式非常典型：right 负责扩展窗口，while 循环负责在条件不满足时收缩窗口。窗口始终维护"不包含重复字符"这个不变量。</p>
 
+        <div class="demo" id="demo-window">
+            <p><strong>可交互演示：最长无重复子串</strong>（s = "abcabcbb"，LeetCode 3 官方示例之一，答案 3）</p>
+            <div class="demo-controls" role="group" aria-label="滑动窗口演示控制">
+                <button type="button" id="sw-prev">上一步</button>
+                <button type="button" id="sw-next">下一步</button>
+                <button type="button" id="sw-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="sw-out" role="status" aria-live="polite"></pre>
+        </div>
+
         <p>这里有一个关键细节：<strong>什么时候更新结果？</strong>对于"求最长"的问题，一般在收缩完窗口后（即窗口满足条件时）更新结果；对于"求最短"的问题，一般在窗口满足条件时（即收缩前）更新结果。</p>
+
+        <figure id="fig-var-window">
+            <svg viewBox="0 0 360 258" role="img" aria-label="不定长窗口的四步循环状态机示意图">
+                <title>不定长窗口循环：right 扩展 → 检查不变量 → 不合法则 left 收缩，合法则更新答案</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="14" y="16" font-size="13" font-weight="700" fill="#7c2d12">不定长窗口的主循环</text>
+                    <rect x="40" y="28" width="292" height="36" rx="10" fill="#fff7ed" stroke="#f97316"></rect>
+                    <text x="52" y="51" font-size="12" fill="#7c2d12">① right 右移：把新的 s[right] 纳入窗口</text>
+                    <line x1="186" y1="64" x2="186" y2="80" stroke="#0ea5e9" stroke-width="2" marker-end="url(#swArrow)"></line>
+                    <rect x="40" y="82" width="292" height="36" rx="10" fill="#e0f2fe" stroke="#0ea5e9"></rect>
+                    <text x="52" y="105" font-size="12" fill="#0c4a6e">② 检查不变量：窗口现在合法吗？</text>
+                    <text x="60" y="138" font-size="11" fill="#b91c1c">不合法（可能连续多次）</text>
+                    <line x1="60" y1="118" x2="60" y2="152" stroke="#ef4444" stroke-width="2" marker-end="url(#swArrowRed)"></line>
+                    <rect x="14" y="154" width="168" height="44" rx="10" fill="#fee2e2" stroke="#ef4444"></rect>
+                    <text x="26" y="174" font-size="12" fill="#7f1d1d">③ left 右移：把 s[left] 移出窗口</text>
+                    <text x="26" y="190" font-size="11" fill="#7f1d1d">直到重新合法为止（while，不是 if）</text>
+                    <text x="212" y="138" font-size="11" fill="#166534">合法</text>
+                    <line x1="268" y1="118" x2="268" y2="152" stroke="#22c55e" stroke-width="2" marker-end="url(#swArrowGreen)"></line>
+                    <rect x="192" y="154" width="154" height="44" rx="10" fill="#dcfce7" stroke="#86efac"></rect>
+                    <text x="204" y="174" font-size="12" fill="#14532d">④ 更新答案</text>
+                    <text x="204" y="190" font-size="11" fill="#14532d">最长收缩后记、最短收缩前记</text>
+                    <path d="M14,176 H4 V100 H40" fill="none" stroke="#ef4444" stroke-width="2" marker-end="url(#swArrowRed)"></path>
+                    <path d="M346,176 H356 V46 H332" fill="none" stroke="#22c55e" stroke-width="2" marker-end="url(#swArrowGreen)"></path>
+                    <text x="14" y="228" font-size="11" fill="#475569">left 与 right 都只向右移 → 各最多走 n 步 → 均摊 O(n)</text>
+                    <text x="14" y="248" font-size="11" fill="#64748b">left 只向右移，没有回退过程，所以两层循环不等于 O(n²)</text>
+                </g>
+                <defs>
+                    <marker id="swArrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#0ea5e9"></path></marker>
+                    <marker id="swArrowRed" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#ef4444"></path></marker>
+                    <marker id="swArrowGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#22c55e"></path></marker>
+                </defs>
+            </svg>
+            <figcaption>不定长窗口的循环可以拆成四步：扩展、检查、收缩、记录。关键在③：它必须是 <code>while</code> 而不只是一个 <code>if</code>，因为一步 right 可能让窗口非法多次，需要连续收缩直到重新合法。另一要点是“记录时机”：求最长在窗口合法后记（收缩之后），求最短在窗口刚好合法时记（收缩之前）。</figcaption>
+        </figure>
 
         <h3>长度最小的子数组（LeetCode 209）</h3>
 
@@ -138,7 +268,7 @@ for i in range(len(nums)):
             <strong>易错点：</strong>求最短时 while 循环内先更新结果再收缩，求最长时先收缩再更新结果。我见过很多人在 LeetCode 3 上把 <code>while</code> 写成 <code>if</code>——当窗口内有多个重复字符时，一个 if 只能移除一个！比如 <code>"abca"</code> 这个 case，right 移到第二个 a 时，如果不循环移除，left 只前进一次，窗口里仍然有 a，就会直接爆炸。
         </div>
 
-        <h2>恰好 K 型 — 容斥原理</h2>
+        <h2 id="exact-k">恰好 K 型 — 容斥原理</h2>
 
         <p>"恰好 K" 类问题是滑动窗口中比较 tricky 的一种。比如"子数组中恰好有 K 个奇数"、"子串中恰好有 K 种字符"。直接维护"恰好 K"的条件比较困难，一种巧妙的思路是使用<strong>容斥原理</strong>：将"恰好 K"转化为"最多 K"减去"最多 K-1"。</p>
 
@@ -175,23 +305,24 @@ for i in range(len(nums)):
             <strong>模式总结：</strong>"恰好 K" = "最多 K" - "最多 K-1"。这个技巧不仅适用于滑动窗口，在很多统计类问题中都能用。只要你能实现"最多 K"的版本，"恰好 K"只是做一次减法而已。
         </div>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <p>滑动窗口最常见的坑有两个：<strong>忘记更新窗口状态</strong>和<strong>left 移动顺序错误</strong>。</p>
 
-        <p>先讲第一个。我有个朋友在写 LeetCode 209（最小子数组和）时，写出了这样的代码：</p>
+        <p>先讲第一个。写 LeetCode 209（最小子数组和）时，一个很常见的错误写法是：</p>
 
         <pre><code>while window_sum >= target:
     ans = min(ans, right - left + 1)
     left += 1
     window_sum -= nums[left]  # 错误！left 已经变了！</code></pre>
 
-        <p>这个 bug 非常隐蔽——<code>left += 1</code> 先执行，然后 <code>window_sum -= nums[left]</code> 减去的是新 left 位置的元素，而不是旧 left 位置的元素。正确的顺序是<strong>先更新数据，再移动指针</strong>：先 <code>window_sum -= nums[left]</code>，再 <code>left += 1</code>。这个顺序问题我至少见过 5 个同学犯过。</p>
+        <p>这个 bug 非常隐蔽——<code>left += 1</code> 先执行，然后 <code>window_sum -= nums[left]</code> 减去的是新 left 位置的元素，而不是旧 left 位置的元素。正确的顺序是<strong>先更新数据，再移动指针</strong>：先 <code>window_sum -= nums[left]</code>，再 <code>left += 1</code>。两者相差一个下标，静态审阅时极容易看漏，写完拿一个 2–3 元素的小例子手推一遍最保险。</p>
 
         <p>第二个坑是 <code>while s[right] in char_set</code> 写成了 <code>if s[right] in char_set</code>。当窗口内有多个重复字符时，if 只能移除一次，而实际上可能需要多次移除才能让窗口重新合法。例如字符串 <code>"abcaa"</code>——right 指向索引 4 的 a 时，窗口 <code>[0,4]</code> 里有三个 a，if 只移除索引 0 的 a，窗口里仍然有重复的 a。</p>
 
         <p>第三个容易被忽略的问题：<strong>窗口状态的数据结构选择</strong>。对于字符计数用长度为 256 的数组最快；对于整数计数用 Counter 或 dict；对于"是否存在"用 set。选择合适的数据结构能让代码更简洁高效。</p>
 
+        <div class="scroll-x">
         <table>
             <thead>
                 <tr>
@@ -228,10 +359,34 @@ for i in range(len(nums)):
                 </tr>
             </tbody>
         </table>
+        </div>
 
         <div class="tip">
             <strong>刷题建议：</strong>滑动窗口的题目套路非常明显。如果你遇到"连续子数组/子串"的描述，把它和"最长/最短/恰好 K"组合，几乎就能确定是滑动窗口。准备好上面四个模板，大部分滑动窗口题都能套用。
         </div>
+
+        <h2 id="refs">出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>结论</th><th>出处</th><th>前提 / 例外</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>定长窗口 O(n)</td><td>LeetCode 643《子数组最大平均数 I》：nums 长度 ≥ k</td><td>需处理 k = len(nums) 的边界（无滑动）</td></tr>
+                    <tr><td>不定长窗口 O(n)</td><td>LeetCode 3《无重复字符的最长子串》、209《长度最小的子数组》</td><td>209 要求元素均为正整数，否则窗口和不具备单调性</td></tr>
+                    <tr><td>恰好 K = 至多 K − 至多 (K−1)</td><td>LeetCode 1248《统计「优美子数组」》：子数组连续，只需统计奇数个数</td><td>仅适用于“恰好 K 个”可拆为差集的可加性指标</td></tr>
+                    <tr><td>均摊 O(n)</td><td>left 与 right 单调不减，每个元素进出窗口各一次</td><td>窗口内不能有需要回退的指标（如不能要求“窗口内最大值”单调）</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>定长窗口图中的数组与 sum 值为<strong>教学示意</strong>数据；演示用的 "abcabcbb" 是 LeetCode 3 官方示例之一。</li>
+            <li>滑动窗口要求窗口指标可以<strong>单调地</strong>增量维护：像“窗口最大值”这类指标需要用单调队列（见第 19 章），不能只用 sum/count。</li>
+            <li>本章只讨论数组/字符串上的单窗口；多指针与“固定两端、只缩一侧”的变体不在范围内。</li>
+        </ul>
 
         <p>到此我们完成了滑动窗口的核心内容。滑动窗口的核心就是"左右指针协调推进，增量更新窗口状态"。下一章我们将学习<strong>前缀和与差分</strong>——如果说滑动窗口是从"结构"角度处理子数组，前缀和就是从"计算"角度：把区间求和问题从 O(n) 降到 O(1)。两种思路正好形成互补。我们下一章见！</p>
 
@@ -240,8 +395,57 @@ for i in range(len(nums)):
             <a href="index.html">📖 返回目录</a>
             <a href="07.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var s = 'abcabcbb';
+    var win = {}, left = 0, best = 0, states = [];
+    states.push({ left: 0, right: -1, best: 0, win: '', msg: '初始：left = 0，窗口为空。' });
+
+    for (var right = 0; right < s.length; right++) {
+        var ch = s[right];
+        var moved = 0;
+        while (Object.prototype.hasOwnProperty.call(win, ch)) {
+            delete win[s[left]];
+            left++;
+            moved++;
+        }
+        win[ch] = true;
+        var len = right - left + 1;
+        if (len > best) best = len;
+        var msg = 'right = ' + right + '（字符 "' + ch + '"）：';
+        msg += moved
+            ? '窗口内已有 "' + ch + '"，left 右移 ' + moved + ' 格至 ' + left + '。'
+            : '无重复，直接扩展。';
+        msg += '窗口 "' + s.slice(left, right + 1) + '"，长度 ' + len + '。';
+        states.push({ left: left, right: right, best: best, win: s.slice(left, right + 1), msg: msg });
+    }
+
+    var pos = 0;
+    var out = document.getElementById('sw-out');
+    function render() {
+        var st = states[pos];
+        out.textContent = st.msg
+            + '\n当前窗口 = "' + st.win + '"（区间 [' + st.left + ', ' + st.right + ']）'
+            + '，已记录的最长长度 = ' + st.best
+            + '\n进度 ' + (pos + 1) + '/' + states.length;
+    }
+    document.getElementById('sw-next').addEventListener('click', function () {
+        if (pos < states.length - 1) pos++;
+        render();
+    });
+    document.getElementById('sw-prev').addEventListener('click', function () {
+        if (pos > 0) pos--;
+        render();
+    });
+    document.getElementById('sw-reset').addEventListener('click', function () {
+        pos = 0;
+        render();
+    });
+    render();
+})();
+</script>
 </body>
 </html>
