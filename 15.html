@@ -5,11 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第15章 图论基础</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端的布局兑底：不依赖外部样式表也能不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x, .eq-scroll, [data-math-scroll] { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>💻 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 数组与哈希表</a></li>
@@ -41,20 +55,66 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>图论：连接一切的数据结构</h2>
+        <h1>图论基础：表示方式、DFS 与 BFS</h1>
+        <p class="lede">图论题看着杂，其实面试里的考察点非常集中：<strong>先把图存下来（邻接表/邻接矩阵），再选一种遍历（DFS 或 BFS）</strong>。本章围绕这个主线，把两件事说清楚：① 为什么绝大多数图题都用邻接表；② 为什么“求最短步数”必须用 BFS 而不是 DFS。</p>
 
-        <p>各位同学，欢迎来到图论的世界。如果说前面的数据结构（数组、链表、树）都是在"线性"或"层次"结构中操作数据，那么<strong>图（Graph）</strong>就是最能描述真实世界的结构——社交网络的好友关系、地图上的道路连接、互联网的路由拓扑，无一不是图。在 LeetCode 面试中，图论题目出现频率极高（尤其是大厂），而且通常是区分"能否通过"的关键题型。</p>
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#intro">图：连接一切的数据结构</a></li>
+                <li><a href="#represent">两种表示：邻接矩阵与邻接表</a></li>
+                <li><a href="#dfs">DFS 遍历与岛屿问题</a></li>
+                <li><a href="#bfs">BFS 遍历与最短步数</a></li>
+                <li><a href="#bipartite">二分图判定：染色法</a></li>
+                <li><a href="#pitfalls">坑点与总结</a></li>
+                <li><a href="#refs">出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="intro">图论：连接一切的数据结构</h2>
+
+        <p>各位同学，欢迎来到图论的世界。如果说前面的数据结构（数组、链表、树）都是在"线性"或"层次"结构中操作数据，那么<strong>图（Graph）</strong>就是最能描述真实世界的结构——社交网络的好友关系、地图上的道路连接、互联网的路由拓扑，无一不是图。图论题在面试里常被用来区分候选人是否真的理解“遍历”而不只是背模板。</p>
 
         <p>很多同学一听到"图论"就发怵，觉得它复杂、抽象、算法多。其实图论题在面试中的考察点非常集中：<strong>图的遍历（DFS/BFS）</strong> 以及 <strong>拓扑排序、最短路径、并查集</strong> 这几种范式。本章我们先打好最核心的基础——图的表示和遍历，为后续几章的进阶算法做铺垫。</p>
 
         <div class="highlight">
-            <strong>本章路线：</strong>图的两种表示方式 → DFS与BFS遍历 → 网格图中的DFS范式（岛屿问题） → BFS的应用 → 二分图判定。学完本章，你能解决 LeetCode 上约 60% 的图论入门题。
+            <strong>本章路线：</strong>图的两种表示方式 → DFS与BFS遍历 → 网格图中的DFS范式（岛屿问题） → BFS的应用 → 二分图判定。本章只覆盖这四类范式，不涉及最短路径与最小生成树（留到第 17 章）。
         </div>
 
-        <h2>图的表示：邻接矩阵 vs 邻接表</h2>
+        <h2 id="represent">图的表示：邻接矩阵 vs 邻接表</h2>
+
+        <figure id="fig-represent">
+            <svg viewBox="0 0 360 240" role="img" aria-label="同一个无向图的邻接表与邻接矩阵表示对比">
+                <title>3 个顶点 2 条边的无向图，用邻接表存 4 个邻居项，用 3×3 邻接矩阵存 9 个格子</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="14" y="16" font-size="12" font-weight="700" fill="#7c2d12">一个无向图：顶点 0、1、2，边 0–1 与 1–2</text>
+                    <line x1="63" y1="52" x2="109" y2="52" stroke="#f97316" stroke-width="2.5"></line>
+                    <line x1="143" y1="52" x2="189" y2="52" stroke="#f97316" stroke-width="2.5"></line>
+                    <circle cx="46" cy="52" r="17" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"></circle>
+                    <circle cx="126" cy="52" r="17" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"></circle>
+                    <circle cx="206" cy="52" r="17" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"></circle>
+                    <text x="46" y="57" text-anchor="middle" font-size="13" fill="#0c4a6e">0</text>
+                    <text x="126" y="57" text-anchor="middle" font-size="13" fill="#0c4a6e">1</text>
+                    <text x="206" y="57" text-anchor="middle" font-size="13" fill="#0c4a6e">2</text>
+                    <text x="250" y="57" font-size="11" fill="#64748b">V = 3，E = 2</text>
+                    <text x="14" y="100" font-size="12" fill="#7c2d12">邻接表（只存存在的边）</text>
+                    <text x="14" y="122" font-size="12" font-family="ui-monospace, monospace" fill="#334155">0 -&gt; [1]</text>
+                    <text x="14" y="142" font-size="12" font-family="ui-monospace, monospace" fill="#334155">1 -&gt; [0, 2]</text>
+                    <text x="14" y="162" font-size="12" font-family="ui-monospace, monospace" fill="#334155">2 -&gt; [1]</text>
+                    <text x="220" y="100" font-size="12" fill="#0c4a6e">邻接矩阵（3×3）</text>
+                    <text x="220" y="122" font-size="12" font-family="ui-monospace, monospace" fill="#334155">0 1 0</text>
+                    <text x="220" y="142" font-size="12" font-family="ui-monospace, monospace" fill="#334155">1 0 1</text>
+                    <text x="220" y="162" font-size="12" font-family="ui-monospace, monospace" fill="#334155">0 1 0</text>
+                    <text x="14" y="192" font-size="12" fill="#475569">邻接表 O(V+E)：查邻居直接迭代</text>
+                    <text x="14" y="212" font-size="12" fill="#475569">邻接矩阵固定 O(V²)：查一条边 O(1)</text>
+                    <text x="14" y="232" font-size="11" fill="#64748b">无向图的每条边在邻接表里存两次（2E 个邻居项）</text>
+                </g>
+            </svg>
+            <figcaption>同一个无向图的两种存法。邻接表只为存在的边分配空间，遍历某点的邻居就是遍历那个列表（总代价 O(V+E)）；邻接矩阵不管图稀不稀疏都固定占 V² 个格子，但“u 与 v 是否相邻”是 O(1) 的直接查表。图中 0–1–2 这个链是最小的<strong>教学示意</strong>例子。</figcaption>
+        </figure>
 
         <p>在写任何图算法之前，第一件事就是把图"存"下来。LeetCode 上图的输入形式五花八门——有的是边列表，有的是邻接表，有的干脆给你一个二维网格。但在我们内部实现中，通常需要把输入转换成统一的表示。</p>
 
@@ -82,6 +142,18 @@ def build_adj_list(n, edges):
         adj[v].append(u)  # 无向图
     return adj</code></pre>
 
+        <div class="eq-scroll" data-math-scroll tabindex="0" role="region" aria-label="两种表示的复杂度对比公式，可横向滚动">
+            <math display="block" aria-label="邻接表遍历的时间复杂度为 V 加 E 的大 O，邻接矩阵为 V 平方的大 O；空间复杂度同理">
+                <mrow>
+                    <msub><mi>T</mi><mtext>list</mtext></msub><mo>=</mo><mi>O</mi><mo>(</mo><mi>V</mi><mo>+</mo><mi>E</mi><mo>)</mo>
+                    <mo>,</mo><mspace width="0.7em"></mspace>
+                    <msub><mi>T</mi><mtext>matrix</mtext></msub><mo>=</mo><mi>O</mi><mo>(</mo><msup><mi>V</mi><mn>2</mn></msup><mo>)</mo>
+                </mrow>
+            </math>
+        </div>
+        <p class="cite">两个结论都依赖同一个前提：<strong>每个顶点与每条边都被访问常数次</strong>。所以不管图的形状如何，遍历的代价只和 V、E 成正比；而邻接矩阵不管有多少条边都要扫描一整行，才会出现 V² 这个和 E 无关的界。</p>
+
+        <div class="scroll-x">
         <table>
             <thead>
                 <tr>
@@ -118,12 +190,13 @@ def build_adj_list(n, edges):
                 </tr>
             </tbody>
         </table>
-
-        <div class="tip">
-            <strong>面试建议：</strong>99% 的 LeetCode 图论题用邻接表。除非题目明确是稠密图或要用到 Floyd 算法，否则默认走邻接表路线。节省空间且遍历邻居快。
         </div>
 
-        <h2>图的DFS遍历：岛屿问题系列</h2>
+        <div class="tip">
+            <strong>面试建议：</strong>大多数 LeetCode 图论题的输入都以边列表或网格给出，用邻接表存下来既省空间、又让“遍历邻居”变成直接迭代。除非题目明确是稠密图或要用到 Floyd 算法，默认走邻接表路线。
+        </div>
+
+        <h2 id="dfs">图的DFS遍历：岛屿问题系列</h2>
 
         <p>说到图上的 DFS，最典型的莫过于 LeetCode 上的"岛屿问题"系列。这类问题的输入不是一个显式的 <code>adj</code> 列表，而是一个 <code>m × n</code> 的二维网格（Grid）。你把每个格子看作一个节点，相邻的四个方向就是边——这就是<strong>隐式图（Implicit Graph）</strong>。</p>
 
@@ -224,9 +297,40 @@ def build_adj_list(n, edges):
             <strong>岛屿问题总结：</strong>三题的核心都是"DFS + 访问标记"的四方向遍历模板。不同点只在于 DFS 过程中收集的信息不同——数量、形状、或与另一个网格的对应关系。掌握这个模板，所有网格 DFS 题目一通百通。
         </div>
 
-        <h2>图的BFS遍历</h2>
+        <h2 id="bfs">图的BFS遍历</h2>
 
         <p>BFS 的核心优势是<strong>最短路径</strong>——在无权图中，BFS 第一次访问到目标节点时走过的路径就是最短的。LeetCode 上最常见的 BFS 应用场景有两种：网格中的"感染扩散"和单词/状态的"最短转换"。</p>
+
+        <figure id="fig-bfs-layers">
+            <svg viewBox="0 0 360 216" role="img" aria-label="BFS 按层扩散的层次图">
+                <title>从起点 S 出发，BFS 第 k 层就是距离为 k 的节点集合，第一次访问即最短</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="14" y="16" font-size="12" font-weight="700" fill="#7c2d12">BFS 按层（距离）向外扩散</text>
+                    <line x1="36" y1="102" x2="140" y2="52" stroke="#cbd5e1" stroke-width="2"></line>
+                    <line x1="36" y1="102" x2="140" y2="102" stroke="#cbd5e1" stroke-width="2"></line>
+                    <line x1="36" y1="102" x2="140" y2="152" stroke="#cbd5e1" stroke-width="2"></line>
+                    <line x1="140" y1="52" x2="244" y2="52" stroke="#cbd5e1" stroke-width="2"></line>
+                    <line x1="140" y1="152" x2="244" y2="152" stroke="#cbd5e1" stroke-width="2"></line>
+                    <circle cx="36" cy="102" r="15" fill="#dcfce7" stroke="#22c55e" stroke-width="2"></circle>
+                    <text x="36" y="107" text-anchor="middle" font-size="12" fill="#166534">S</text>
+                    <circle cx="140" cy="52" r="15" fill="#ffedd5" stroke="#f97316" stroke-width="2"></circle>
+                    <circle cx="140" cy="102" r="15" fill="#ffedd5" stroke="#f97316" stroke-width="2"></circle>
+                    <circle cx="140" cy="152" r="15" fill="#ffedd5" stroke="#f97316" stroke-width="2"></circle>
+                    <text x="140" y="57" text-anchor="middle" font-size="12" fill="#7c2d12">a</text>
+                    <text x="140" y="107" text-anchor="middle" font-size="12" fill="#7c2d12">b</text>
+                    <text x="140" y="157" text-anchor="middle" font-size="12" fill="#7c2d12">c</text>
+                    <circle cx="244" cy="52" r="15" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"></circle>
+                    <circle cx="244" cy="152" r="15" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"></circle>
+                    <text x="244" y="57" text-anchor="middle" font-size="12" fill="#0c4a6e">d</text>
+                    <text x="244" y="157" text-anchor="middle" font-size="12" fill="#0c4a6e">e</text>
+                    <text x="14" y="188" font-size="11" fill="#166534">第 0 层：{S}</text>
+                    <text x="100" y="188" font-size="11" fill="#7c2d12">第 1 层：{a, b, c}</text>
+                    <text x="222" y="188" font-size="11" fill="#0c4a6e">第 2 层：{d, e}</text>
+                    <text x="14" y="208" font-size="11" fill="#64748b">第 k 层 = 走 k 步可达的节点；入队顺序自然按层，所以首次访问即最短</text>
+                </g>
+            </svg>
+            <figcaption>BFS 的“层”就是“距离”。用队列保证：所有第 k 层的节点都比第 k+1 层先被处理，因此一个节点第一次被访问时的步数就是最短步数。这也是为什么“求最少步数/最短转换”一律用 BFS；DFS 只能告诉你“存在一条路径”，不能保证最短（本图为教学示意的层次结构）。</figcaption>
+        </figure>
 
         <h3>腐烂的橘子（LeetCode 994）</h3>
 
@@ -271,6 +375,16 @@ def build_adj_list(n, edges):
             <strong>BFS vs DFS 选择指南：</strong>如果问题问的是"最短步数""最少时间""最早感染"等带"最"字的路径问题，第一反应应该是 BFS。DFS 适合"是否存在路径""有多少种路径"这类连通性/计数问题。
         </div>
 
+        <div class="demo" id="demo-bfs">
+            <p><strong>可交互演示：多源 BFS 逐分钟扩散</strong>（LeetCode 994 官方示例之一，答案为 4 分钟）</p>
+            <div class="demo-controls" role="group" aria-label="BFS 扩散演示控制">
+                <button type="button" id="bf-prev">上一分钟</button>
+                <button type="button" id="bf-next">下一分钟</button>
+                <button type="button" id="bf-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="bf-out" role="status" aria-live="polite"></pre>
+        </div>
+
         <h3>单词接龙（LeetCode 127）</h3>
 
         <p>题目：给定一个开始单词、一个结束单词和一个单词列表，每次改变一个字母，找从 beginWord 到 endWord 的最短转换序列长度。</p>
@@ -304,7 +418,7 @@ def build_adj_list(n, edges):
 
         <p>这个解法的时间复杂度是 <code>O(26 × L × N)</code>（L 为单词长度，N 为单词数）。LeetCode 上能过，但如果你追求极致性能，可以用<strong>双向 BFS</strong>——从 beginWord 和 endWord 同时开始搜索，当两个方向的 visited 集合相交时，路径就找到了。双向 BFS 能把搜索空间从 <code>b^d</code> 降到 <code>2 × b^(d/2)</code>，提升非常明显。</p>
 
-        <h2>二分图判定：染色法</h2>
+        <h2 id="bipartite">二分图判定：染色法</h2>
 
         <p>有一个经典面试题——<strong>判断二分图（LeetCode 785）</strong>。所谓二分图，就是可以把所有节点分成两个集合，使得每条边的两个端点分别属于不同集合。用人话说就是：<strong>用两种颜色给图上色，确保相邻节点颜色不同</strong>。</p>
 
@@ -337,7 +451,7 @@ def build_adj_list(n, edges):
             <strong>二分图应用：</strong>二部图匹配、任务分配、课程安排中的冲突检测。另外，<strong>如果一个图是二分图，当且仅当图中没有奇环</strong>（长度为奇数的环）。这是二分图判定的充要条件，面试时偶尔会问到。
         </div>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <p>图论入门阶段的坑非常多，我挑几个最常见的来说。</p>
 
@@ -378,6 +492,7 @@ def bfs_correct(graph, start):
 
         <p>Python 默认递归深度是 1000。如果图很大（比如 500×500 的网格），DFS 递归可能超过这个限制。解决方案有三个：用 <code>sys.setrecursionlimit(10000)</code> 加大限制、改用迭代式 DFS（显式栈）、或者直接用 BFS。</p>
 
+        <div class="scroll-x">
         <table>
             <thead>
                 <tr>
@@ -414,6 +529,31 @@ def bfs_correct(graph, start):
                 </tr>
             </tbody>
         </table>
+        </div>
+
+        <h2 id="refs">出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>范式</th><th>出处</th><th>前提 / 例外</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>网格 DFS 连通块</td><td>LeetCode 200《岛屿数量》：1 为陆地、0 为水，只统计上下左右</td><td>对角相邻不算连通；递归深度可能超过 Python 默认 1000</td></tr>
+                    <tr><td>岛屿形状去重</td><td>LeetCode 694、1905：需要在遍历时记录相对坐标或标记子岛屿</td><td>需要额外的形状签名处理</td></tr>
+                    <tr><td>多源 BFS 最少分钟数</td><td>LeetCode 994《腐烂的橘子》：每分钟每个腐烂橘子感染四邻</td><td>若存在无法到达的新鲜橘子，答案是 -1</td></tr>
+                    <tr><td>BFS 最短转换序列</td><td>LeetCode 127《单词接龙》：每次只能改一个字母，且中间词必须在词典中</td><td>朴素建图会超时，需要虚拟中间节点或双向 BFS</td></tr>
+                    <tr><td>二分图染色判定</td><td>二分图定义：顶点可划为两组，同组内无边</td><td>存在奇环当且仅当不是二分图</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>两张图中的顶点数、层次结构以及演示网格都是<strong>教学示意</strong>规模（演示用的是 LeetCode 994 官方示例之一），目的是让每一步都能手算核对。</li>
+            <li>O(V+E) 成立的前提是“每个顶点、每条边被访问常数次”；若在遍历中引入排序或哈希冲突极端情况，常数会变化。</li>
+            <li>本章不覆盖带权图的最短路径（Dijkstra/Bellman-Ford）、拓扑排序与并查集，这些在第 16、17 章展开。</li>
+        </ul>
 
         <p>到此为止，图论的基础知识就铺垫完了。我们从图的两种表示（邻接矩阵 vs 邻接表）出发，掌握了 DFS 和 BFS 两种遍历方式在网格图和抽象图上的应用，最后学习了二分图判定的染色法。下一章我们将进入图论的两大核心应用——<strong>拓扑排序与并查集</strong>，它们是解决课程安排、任务调度、动态连通性等问题的利器。我们下一章见！</p>
 
@@ -422,8 +562,78 @@ def bfs_correct(graph, start):
             <a href="index.html">📖 返回目录</a>
             <a href="16.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var start = [[2, 1, 1], [1, 1, 0], [0, 1, 1]];
+    var g = start.map(function (r) { return r.slice(); });
+    var i, j, k, fresh = 0, frontier = [];
+    for (i = 0; i < 3; i++) for (j = 0; j < 3; j++) {
+        if (g[i][j] === 2) frontier.push([i, j]);
+        if (g[i][j] === 1) fresh++;
+    }
+    function snap() { return g.map(function (r) { return r.slice(); }); }
+    function draw(gr) {
+        return gr.map(function (r) {
+            return r.map(function (v) { return v === 2 ? '2' : (v === 1 ? '1' : '.'); }).join(' ');
+        }).join('\n');
+    }
+    var states = [{
+        minute: 0, grid: snap(),
+        msg: '第 0 分钟：队列中已有 ' + frontier.length + ' 个腐烂橘子，它们同时向外扩散；新鲜橘子 ' + fresh + ' 个。'
+    }];
+    var minute = 0;
+    while (frontier.length && fresh > 0) {
+        minute++;
+        var next = [];
+        for (k = 0; k < frontier.length; k++) {
+            var x = frontier[k][0], y = frontier[k][1];
+            var dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            for (var d = 0; d < 4; d++) {
+                var nx = x + dirs[d][0], ny = y + dirs[d][1];
+                if (nx >= 0 && nx < 3 && ny >= 0 && ny < 3 && g[nx][ny] === 1) {
+                    g[nx][ny] = 2;
+                    fresh--;
+                    next.push([nx, ny]);
+                }
+            }
+        }
+        frontier = next;
+        states.push({
+            minute: minute, grid: snap(),
+            msg: '第 ' + minute + ' 分钟：本分钟新腐烂 ' + next.length + ' 个，剩余新鲜 ' + fresh + ' 个。'
+        });
+    }
+    states.push({
+        minute: minute, grid: snap(),
+        msg: fresh > 0
+            ? '还有 ' + fresh + ' 个新鲜橘子不可达 → 返回 -1（本题示例可以全部腐烂）。'
+            : '全部腐烂，答案 = ' + minute + ' 分钟。'
+    });
+
+    var pos = 0;
+    var out = document.getElementById('bf-out');
+    function render() {
+        var st = states[pos];
+        out.textContent = st.msg + '\n\n' + draw(st.grid)
+            + '\n\n图例：2 = 腐烂、1 = 新鲜、. = 空\n进度 ' + (pos + 1) + '/' + states.length;
+    }
+    document.getElementById('bf-next').addEventListener('click', function () {
+        if (pos < states.length - 1) pos++;
+        render();
+    });
+    document.getElementById('bf-prev').addEventListener('click', function () {
+        if (pos > 0) pos--;
+        render();
+    });
+    document.getElementById('bf-reset').addEventListener('click', function () {
+        pos = 0;
+        render();
+    });
+    render();
+})();
+</script>
 </body>
 </html>
