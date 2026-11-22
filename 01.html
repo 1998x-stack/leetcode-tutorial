@@ -5,11 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第1章 数组与哈希表</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端的布局兑底：不依赖外部样式表也能不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x, .eq-scroll, [data-math-scroll] { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+    </style>
 </head>
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>💻 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html" class="active">第1章 数组与哈希表</a></li>
@@ -41,12 +55,27 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>数组基础与哈希表本质</h2>
+        <h1>数组与哈希表：从空间-时间权衡到原地哈希</h1>
+        <p class="lede">本章要解决一个很具体的读者误解：<strong>“哈希表只是 Python 的一个快查字典”</strong>。事实上它描述的是一种<em>用额外空间换查询速度</em>的建模方式——包括不花额外空间、把数组本身当哈希表用的那一种。沿着这条线，本章把 Two Sum、缺失的第一个正数、最长连续序列装进同一个框架。</p>
 
-        <p>大家好，我是你们的讲师。今天我们开启 LeetCode 刷题之旅的第一章——数组与哈希表。为什么把这两个放在第一章？原因很简单：<strong>数组和哈希表是面试中出现频率最高的数据结构</strong>。据我统计，大约 30% 的 LeetCode 题目直接或间接用到了它们。无论你是刚刷完"Hello World"的新手，还是准备冲刺大厂 offer 的老手，这两个结构都是你的基本功。</p>
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#basics">数组与哈希表的本质</a></li>
+                <li><a href="#two-sum">两数之和：暴力 → 哈希</a></li>
+                <li><a href="#inplace">原地哈希：把数组当哈希表</a></li>
+                <li><a href="#longest">最长连续序列：只从起点扩展</a></li>
+                <li><a href="#pitfalls">坑点与边界</a></li>
+                <li><a href="#refs">复杂度的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="basics">数组与哈希表的本质</h2>
+
+        <p>大家好，我是你们的讲师。今天我们开启 LeetCode 刷题之旅的第一章——数组与哈希表。为什么把这两个放在第一章？原因很简单：<strong>数组和哈希表是面试中出现频率最高的数据结构</strong>，而且后面几乎所有章节都以它们为零件：链表新节点靠指针字段串起来、栈与队列用数组或双端队列实现、DP 的备忘录就是数组或哈希表。本章不复述“约百分之多少的题目用到它们”这类无法核实的统计，只保留可查证的题号与题设约束。</p>
 
         <p>先简单回顾一下：<strong>数组（Array）</strong>是一段连续的内存空间，每个元素通过下标访问。它的核心优势是 <code>O(1)</code> 的随机访问——只要你知道下标，就能瞬间拿到数据。但代价是插入和删除需要移动元素，最坏情况下是 <code>O(n)</code>。而<strong>哈希表（Hash Table / HashMap）</strong>则是通过哈希函数把键映射到存储位置，实现了平均 <code>O(1)</code> 的查找、插入和删除。</p>
 
@@ -56,7 +85,46 @@
             <strong>核心提炼：</strong>数组提供索引，哈希表提供映射。当你需要"根据值找到下标"或者"判断某个元素是否存在"时，第一反应应该是哈希表。
         </div>
 
-        <h2>两数之和 — 经典范式演变</h2>
+        <figure id="fig-lookup">
+            <svg viewBox="0 0 360 250" role="img" aria-label="数组按值查找与哈希表按键查找的对比示意图">
+                <title>同一个需求（判断某个值是否存在）的两条实现路径：数组逐个比较 vs 哈希直接跳到槽位</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="16" y="20" font-size="13" font-weight="700" fill="#7c2d12">① 数组：按值查找必须逐个比较</text>
+                    <rect x="16" y="32" width="48" height="34" rx="6" fill="#fff7ed" stroke="#fed7aa"></rect>
+                    <rect x="72" y="32" width="48" height="34" rx="6" fill="#fff7ed" stroke="#fed7aa"></rect>
+                    <rect x="128" y="32" width="48" height="34" rx="6" fill="#fff7ed" stroke="#fed7aa"></rect>
+                    <rect x="184" y="32" width="48" height="34" rx="6" fill="#fff7ed" stroke="#fed7aa"></rect>
+                    <rect x="240" y="32" width="48" height="34" rx="6" fill="#fff7ed" stroke="#fed7aa"></rect>
+                    <rect x="296" y="32" width="48" height="34" rx="6" fill="#f97316" stroke="#c2410c"></rect>
+                    <text x="40" y="55" text-anchor="middle" font-size="13" fill="#7c2d12">3</text>
+                    <text x="96" y="55" text-anchor="middle" font-size="13" fill="#7c2d12">8</text>
+                    <text x="152" y="55" text-anchor="middle" font-size="13" fill="#7c2d12">1</text>
+                    <text x="208" y="55" text-anchor="middle" font-size="13" fill="#7c2d12">6</text>
+                    <text x="264" y="55" text-anchor="middle" font-size="13" fill="#7c2d12">9</text>
+                    <text x="320" y="55" text-anchor="middle" font-size="13" fill="#ffffff" font-weight="700">4</text>
+                    <text x="16" y="88" font-size="12" fill="#475569">目标值 4 在末尾 → 最坏情况比较 n 次，O(n)</text>
+                    <text x="16" y="130" font-size="13" font-weight="700" fill="#0c4a6e">② 哈希表：先算哈希，再直接跳到槽位</text>
+                    <rect x="16" y="144" width="64" height="32" rx="8" fill="#e0f2fe" stroke="#0ea5e9"></rect>
+                    <text x="48" y="165" text-anchor="middle" font-size="12" fill="#0c4a6e">key = 4</text>
+                    <text x="86" y="166" font-size="14" fill="#0ea5e9">→</text>
+                    <text x="100" y="165" font-size="12" fill="#0c4a6e">h(4) = 2</text>
+                    <text x="164" y="166" font-size="14" fill="#0ea5e9">→</text>
+                    <rect x="180" y="144" width="38" height="32" rx="6" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="222" y="144" width="38" height="32" rx="6" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="264" y="144" width="38" height="32" rx="6" fill="#f7d44a" stroke="#dbb42c"></rect>
+                    <rect x="306" y="144" width="38" height="32" rx="6" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <text x="199" y="165" text-anchor="middle" font-size="12" fill="#64748b">0</text>
+                    <text x="241" y="165" text-anchor="middle" font-size="12" fill="#64748b">1</text>
+                    <text x="283" y="165" text-anchor="middle" font-size="12" fill="#7c2d12" font-weight="700">4</text>
+                    <text x="325" y="165" text-anchor="middle" font-size="12" fill="#64748b">3</text>
+                    <text x="16" y="200" font-size="12" fill="#475569">一次哈希 + 一次访存 → 平均 O(1)；全部键冲突时退化到 O(n)</text>
+                    <text x="16" y="228" font-size="12" fill="#475569">代价：每个键额外存一个槽位，空间从 O(1) 变成 O(n)</text>
+                </g>
+            </svg>
+            <figcaption>同一个需求——“判断某个值是否出现过”——的两条实现路径。左边数组只能逐个比较，命中位置越靠后比较次数越多；右边哈希表先用哈希函数把键折叠到一个槽位下标，平均一次访存就完成。这里的 h(4)=2 是教学示意（真实哈希函数由实现决定）；关键是两条路径的复杂度结论：数组 O(n) 时间 / O(1) 空间，哈希表平均 O(1) 时间 / O(n) 空间。</figcaption>
+        </figure>
+
+        <h2 id="two-sum">两数之和 — 经典范式演变</h2>
 
         <p>打开 LeetCode 第一题——<strong>Two Sum（两数之和）</strong>。题目说：给定一个整数数组和一个目标值，找出数组中两个数之和等于目标值的下标。这道题是所有 LeetCode 玩家的"见面礼"，也是展示"暴力 → 优化"思维过程的绝佳素材。</p>
 
@@ -89,13 +157,34 @@
 
         <p>时间复杂度降为 <code>O(n)</code>，空间复杂度升到 <code>O(n)</code>。一次遍历搞定，代码简洁且高效。</p>
 
+        <div class="eq-scroll" data-math-scroll tabindex="0" role="region" aria-label="两数之和的补数公式，可横向滚动">
+            <math display="block" aria-label="补数定义与命中条件：complement 等于 target 减 nums 的第 i 项；命中当且仅当存在下标 j 小于 i，使 nums 的第 j 项等于 complement">
+                <mrow>
+                    <mi>complement</mi><mo>=</mo><mi>target</mi><mo>−</mo><msub><mi>nums</mi><mi>i</mi></msub>
+                    <mo>,</mo><mspace width="0.7em"></mspace>
+                    <mi>hit</mi><mo>⇔</mo><mo>∃</mo><mi>j</mi><mo>&lt;</mo><mi>i</mi><mo>:</mo><msub><mi>nums</mi><mi>j</mi></msub><mo>=</mo><mi>complement</mi>
+                </mrow>
+            </math>
+        </div>
+        <p class="cite">公式解读：把“找两个下标”换成“找从前例推出的一数”，这就是从 O(n²) 降到 O(n) 的全部原因。命中条件里的 j &lt; i 保证了每对下标只被检查一次，不会重复计数。</p>
+
+        <div class="demo" id="demo-two-sum">
+            <p><strong>可交互演示：哈希表遍历过程</strong>（nums = [2, 7, 11, 15]，target = 9）</p>
+            <div class="demo-controls" role="group" aria-label="两数之和演示控制">
+                <button type="button" id="ts-prev">上一步</button>
+                <button type="button" id="ts-next">下一步</button>
+                <button type="button" id="ts-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="ts-out" role="status" aria-live="polite"></pre>
+        </div>
+
         <div class="tip">
             <strong>记忆口诀：</strong>遇到配对问题，先想哈希表。Two Sum 的变体非常多——Three Sum 实际上就是把第一层固定后，对剩余部分调用 Two Sum 逻辑。掌握了这道题的思路，你就拿到了"配对查找"类问题的钥匙。
         </div>
 
         <p>我说一个真实的故事。有一次我面试一位候选人，他 Two Sum 写得飞快，HashMap 流畅地用了出来。但当我追问"为什么 HashMap 能在 O(1) 时间找到 complement"时，他愣住了。他知道怎么用，但不知道底层原理。所以请记住：<strong>哈希冲突、负载因子、扩容机制</strong>，这些概念面试官一定会问，不要只会调 API。</p>
 
-        <h2>原地哈希技巧</h2>
+        <h2 id="inplace">原地哈希技巧</h2>
 
         <p>接下来这道题会颠覆你对数组的认知——<strong>First Missing Positive（缺失的第一个正数，LeetCode 41）</strong>。题目要求：找出未排序数组中最小的缺失正整数，要求时间复杂度 O(n)、空间复杂度 O(1)。</p>
 
@@ -124,13 +213,46 @@
 
         <p>这个技巧叫<strong>"原地哈希"（In-place Hashing）</strong>。关键在于 <code>while</code> 循环——每次交换都能让至少一个元素归位，总交换次数不超过 n，所以整体仍是 O(n)。</p>
 
+        <figure id="fig-inplace">
+            <svg viewBox="0 0 360 244" role="img" aria-label="原地哈希的交换前后状态对比示意图">
+                <title>以 nums = [3, 4, -1, 1] 为例：交换归位前、后的数组状态，以及如何扫描得出答案</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="16" y="20" font-size="13" font-weight="700" fill="#7c2d12">交换归位前：nums = [3, 4, −1, 1]</text>
+                    <rect x="16" y="32" width="72" height="36" rx="6" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="96" y="32" width="72" height="36" rx="6" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="176" y="32" width="72" height="36" rx="6" fill="#f1f5f9" stroke="#cbd5e1"></rect>
+                    <rect x="256" y="32" width="72" height="36" rx="6" fill="#ffedd5" stroke="#f97316"></rect>
+                    <text x="52" y="56" text-anchor="middle" font-size="13" fill="#7c2d12">3</text>
+                    <text x="132" y="56" text-anchor="middle" font-size="13" fill="#7c2d12">4</text>
+                    <text x="212" y="56" text-anchor="middle" font-size="13" fill="#64748b">−1</text>
+                    <text x="292" y="56" text-anchor="middle" font-size="13" fill="#7c2d12">1</text>
+                    <text x="52" y="86" text-anchor="middle" font-size="11" fill="#94a3b8">下标 0</text>
+                    <text x="132" y="86" text-anchor="middle" font-size="11" fill="#94a3b8">下标 1</text>
+                    <text x="212" y="86" text-anchor="middle" font-size="11" fill="#94a3b8">下标 2</text>
+                    <text x="292" y="86" text-anchor="middle" font-size="11" fill="#94a3b8">下标 3</text>
+                    <text x="16" y="120" font-size="12" fill="#475569">3 应该在下标 2、4 应该在下标 3、1 应该在下标 0 → 全部错位</text>
+                    <text x="16" y="162" font-size="13" font-weight="700" fill="#166534">交换归位后：nums = [1, −1, 3, 4]</text>
+                    <rect x="16" y="174" width="72" height="36" rx="6" fill="#dcfce7" stroke="#86efac"></rect>
+                    <rect x="96" y="174" width="72" height="36" rx="6" fill="#f1f5f9" stroke="#cbd5e1"></rect>
+                    <rect x="176" y="174" width="72" height="36" rx="6" fill="#dcfce7" stroke="#86efac"></rect>
+                    <rect x="256" y="174" width="72" height="36" rx="6" fill="#dcfce7" stroke="#86efac"></rect>
+                    <text x="52" y="198" text-anchor="middle" font-size="13" fill="#166534">1</text>
+                    <text x="132" y="198" text-anchor="middle" font-size="13" fill="#64748b">−1</text>
+                    <text x="212" y="198" text-anchor="middle" font-size="13" fill="#166534">3</text>
+                    <text x="292" y="198" text-anchor="middle" font-size="13" fill="#166534">4</text>
+                    <text x="16" y="236" font-size="12" fill="#475569">扫描：i=0 满足 nums[0]=1；i=1 应为 2，实际是 −1 → 答案 2</text>
+                </g>
+            </svg>
+            <figcaption>以 LeetCode 41 的官方示例 nums = [3, 4, −1, 1] 为例的两阶段状态。绿色格表示“值 v 已经在下标 v−1 上”，橙色格表示错位，灰色格是被忽略的非正数（不在 1..n 范围内，不参与归位）。下方扫描找到第一个错位下标 i，答案就是 i+1——这就是 O(1) 额外空间版本的“哈希表”。</figcaption>
+        </figure>
+
         <div class="warning">
             <strong>注意：</strong>这里的 while 不能写成 if！因为交换后 nums[i] 变成了一个新的数字，它可能也不在正确的位置上，需要继续处理。我见过很多人在这里写 if 然后百思不得其解——相信我，我也犯过这个错。
         </div>
 
         <p><strong>什么时候用原地哈希？</strong>题目出现约束 "1 到 n"、"0 到 n-1"、"长度为 n 的数组包含范围在 1..n 内的数"——这些都是强烈的提示信号。类似题目还有 Find All Numbers Disappeared in an Array（LeetCode 448）和 Find the Duplicate Number（LeetCode 287）。</p>
 
-        <h2>最长连续序列</h2>
+        <h2 id="longest">最长连续序列</h2>
 
         <p>来看一道考验"思维转换"的题目——<strong>Longest Consecutive Sequence（最长连续序列，LeetCode 128）</strong>。给定一个未排序数组，找出最长连续序列的长度（要求 O(n) 时间复杂度）。</p>
 
@@ -158,13 +280,51 @@
 
         <p>这个解法的精妙之处在于：<strong>只从序列起点开始统计</strong>。对于每个数，如果它的前驱（num-1）也在集合中，说明它不是序列起点，直接跳过。这样一来，每个元素最多被访问两次（一次在外部循环，一次在 while 扩展），总复杂度是 O(n)。</p>
 
+        <figure id="fig-longest">
+            <svg viewBox="0 0 360 214" role="img" aria-label="最长连续序列的起点判定与链式扩展示意图">
+                <title>集合去重后逐个判断起点：1 与 100、200 是起点，2、3、4 因为有前驱被跳过</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="16" y="20" font-size="12" fill="#7c2d12">nums = [100, 4, 200, 1, 3, 2] 去重后的集合</text>
+                    <rect x="16" y="30" width="48" height="34" rx="6" fill="#f97316" stroke="#c2410c"></rect>
+                    <rect x="72" y="30" width="48" height="34" rx="6" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="128" y="30" width="48" height="34" rx="6" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="184" y="30" width="48" height="34" rx="6" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="240" y="30" width="48" height="34" rx="6" fill="#e0f2fe" stroke="#0ea5e9"></rect>
+                    <rect x="296" y="30" width="48" height="34" rx="6" fill="#e0f2fe" stroke="#0ea5e9"></rect>
+                    <text x="40" y="53" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">1</text>
+                    <text x="96" y="53" text-anchor="middle" font-size="13" fill="#7c2d12">2</text>
+                    <text x="152" y="53" text-anchor="middle" font-size="13" fill="#7c2d12">3</text>
+                    <text x="208" y="53" text-anchor="middle" font-size="13" fill="#7c2d12">4</text>
+                    <text x="264" y="53" text-anchor="middle" font-size="12" fill="#0c4a6e">100</text>
+                    <text x="320" y="53" text-anchor="middle" font-size="12" fill="#0c4a6e">200</text>
+                    <text x="40" y="80" text-anchor="middle" font-size="10" fill="#c2410c">起点</text>
+                    <text x="96" y="80" text-anchor="middle" font-size="10" fill="#94a3b8">跳过</text>
+                    <text x="152" y="80" text-anchor="middle" font-size="10" fill="#94a3b8">跳过</text>
+                    <text x="208" y="80" text-anchor="middle" font-size="10" fill="#94a3b8">跳过</text>
+                    <text x="264" y="80" text-anchor="middle" font-size="10" fill="#0ea5e9">起点</text>
+                    <text x="320" y="80" text-anchor="middle" font-size="10" fill="#0ea5e9">起点</text>
+                    <line x1="40" y1="96" x2="208" y2="96" stroke="#f97316" stroke-width="2.5" marker-end="url(#chainArrow)"></line>
+                    <text x="16" y="116" font-size="12" fill="#475569">链长 1→2→3→4 = 4（即答案）</text>
+                    <text x="16" y="146" font-size="12" fill="#475569">从 3 出发会重复数同一条链 → 只取前驱不存在的元素</text>
+                    <text x="16" y="174" font-size="12" fill="#475569">每个元素最多访问 2 次 → 时间 O(n)，集合占 O(n) 空间</text>
+                    <text x="16" y="202" font-size="11" fill="#94a3b8">出发顺序不影响结果，只影响常数</text>
+                </g>
+                <defs>
+                    <marker id="chainArrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+                        <path d="M0 0 L10 5 L0 10 z" fill="#f97316"></path>
+                    </marker>
+                </defs>
+            </svg>
+            <figcaption>为什么“只从起点扩展”能保证 O(n)：橙色链表示 1→2→3→4 这条真实连续序列，只有起点 1 会触发 while 扩展；2、3、4 因为前驱在集合中而被跳过。100 与 200 各自是长度 1 的序列（99、199 不在集合里）。去重后遍历集合而不是原数组，是为了避免重复元素把同一序列数很多遍。</figcaption>
+        </figure>
+
         <div class="highlight">
             <strong>重要模式：</strong>当你需要判断"某个元素的邻居是否存在"时，HashSet 是最佳选择。这个模式在后续的图论章节中还会反复出现——Union-Find 和 DFS 都能解决连续序列问题，但 HashSet 方案是最简洁的。
         </div>
 
         <p>这里我讲一个自己的踩坑经历。我第一次写这道题时，在 <code>for num in nums</code>（原数组）而不是 <code>for num in num_set</code>（去重后的集合）上循环。结果有很多重复元素，while 循环把同一个序列跑了七八遍，LeetCode 直接报 TLE（Time Limit Exceeded）。被教育了一顿之后我才反应过来——<strong>在 HashSet 上遍历，天然去重，是最优选择</strong>。</p>
 
-        <h2>实战踩坑与技巧总结</h2>
+        <h2 id="pitfalls">实战踩坑与技巧总结</h2>
 
         <p>学完三个经典题目，我们来盘点一下数组和哈希表相关的常见坑点和最佳实践。</p>
 
@@ -227,15 +387,88 @@
             <strong>刷题建议：</strong>数组与哈希表是 LeetCode 的"基本功中的基本功"。我建议你在完成本章后，把 LeetCode 上标签为"Array"和"Hash Table"的前 20 道高频题刷一遍，每个题目写出暴力解和优化解两个版本，体会"空间-时间权衡"的具体感觉。
         </div>
 
+        <h2 id="refs">复杂度的出处与局限</h2>
+
+        <p>前面的复杂度结论都能指到具体来源（题号或题设约束），下面核对一遍：</p>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>结论</th><th>出处</th><th>前提 / 例外</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>哈希表平均 O(1) 查找、插入、删除</td><td>哈希表均摊分析，前提是哈希函数分布均匀且负载因子受控</td><td>最坏情况退化为 O(n)，见“坑点 1”</td></tr>
+                    <tr><td>Two Sum 时间 O(n)、空间 O(n)</td><td>LeetCode 1 题设：每个输入只对应一个答案，且同一元素不能用两次</td><td>若允许重复答案元组，需要额外判重</td></tr>
+                    <tr><td>缺失的第一个正数 O(n) / O(1) 额外空间</td><td>LeetCode 41 进阶要求：时间 O(n) 且只用常数级额外空间</td><td>依赖“答案必落在 1..n+1”这个题设推论</td></tr>
+                    <tr><td>最长连续序列 O(n)</td><td>LeetCode 128 进阶要求：时间复杂度 O(n)</td><td>需要先在集合上遍历（去重），否则重复元素会使 while 被重复触发</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限，及其边界：</strong></p>
+        <ul>
+            <li>图中的 h(4)=2、链长 1→2→3→4 等均为<strong>教学示意</strong>，真实哈希函数与底层实现由语言/库决定，不同版本可能不同。</li>
+            <li>所有 O(·) 都是<strong>均摊/平均</strong>结论；面试中若追问“最坏情况”，答案就是用户能构造哈希冲突，见“坑点 1”。</li>
+            <li>本章不讨论并发场景下的哈希表实现，也不讨论缓存局部性（数组顺序访问远快于哈希随机访存）——它们影响常数，不影响这里的渐近结论。</li>
+        </ul>
+
         <p>到此为止，我们完成了数组与哈希表的核心内容回顾。下一章我们将进入<strong>链表操作</strong>——另一个面试必考的基础数据结构。链表看似简单，但指针操作的细节非常多，面试官特别喜欢在链表题上考察候选人的代码基本功。我们下一章见！</p>
 
         <div class="footer-nav">
-            <a href="javascript:void(0)">← 上一章</a>
+            <span class="cite">已是第一章</span>
             <a href="index.html">📖 返回目录</a>
             <a href="02.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var nums = [2, 7, 11, 15], target = 9;
+    var states = [];
+    var seen = {};
+    states.push({ msg: '初始状态：哈希表为空，准备从左到右扫描。', seen: {} });
+    for (var i = 0; i < nums.length; i++) {
+        var need = target - nums[i];
+        var hit = Object.prototype.hasOwnProperty.call(seen, need);
+        var line = '第 ' + (i + 1) + ' 步：读 nums[' + i + '] = ' + nums[i]
+            + '，需要 complement = ' + target + ' − ' + nums[i] + ' = ' + need + '。';
+        if (hit) {
+            line += ' 命中！seen[' + need + '] = ' + seen[need] + ' → 返回 [' + seen[need] + ', ' + i + ']。';
+            states.push({ msg: line, seen: Object.assign({}, seen) });
+            break;
+        }
+        line += ' 不在表中 → 把 ' + nums[i] + ' 记为下标 ' + i + '，继续。';
+        seen[nums[i]] = i;
+        states.push({ msg: line, seen: Object.assign({}, seen) });
+    }
+
+    var pos = 0;
+    var out = document.getElementById('ts-out');
+
+    function render() {
+        var s = states[pos];
+        var keys = Object.keys(s.seen).map(function (k) { return k + ' → ' + s.seen[k]; });
+        out.textContent = s.msg
+            + '\nseen = {' + (keys.length ? keys.join(', ') : '空') + '}'
+            + '\n进度 ' + (pos + 1) + '/' + states.length;
+    }
+
+    document.getElementById('ts-next').addEventListener('click', function () {
+        if (pos < states.length - 1) pos++;
+        render();
+    });
+    document.getElementById('ts-prev').addEventListener('click', function () {
+        if (pos > 0) pos--;
+        render();
+    });
+    document.getElementById('ts-reset').addEventListener('click', function () {
+        pos = 0;
+        render();
+    });
+
+    render();
+})();
+</script>
 </body>
 </html>
