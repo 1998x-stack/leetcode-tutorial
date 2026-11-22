@@ -5,11 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第21章 字符串匹配</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端的布局兑底：不依赖外部样式表也能不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        table { max-width: 100%; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x, .eq-scroll, [data-math-scroll] { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>💻 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 数组与哈希表</a></li>
@@ -41,18 +56,63 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>KMP算法</h2>
+        <h1>字符串匹配：KMP、滚动哈希、字符串哈希与 Z 函数</h1>
+        <p class="lede">KMP 难学，通常卡在一个地方：<strong>把 <code>next</code>（前缀函数）当成需要背下来的数组，而不是“失配时已经知道的信息”</strong>。本章从“已经匹配的部分不要丢掉”这一条出发，先推出前缀函数，再看滚动哈希与 Z 函数如何用不同思路达到同样的线性时间。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#kmp">KMP 与前缀函数</a></li>
+                <li><a href="#strstr">实现 strStr()</a></li>
+                <li><a href="#rabin-karp">Rabin-Karp 与滚动哈希</a></li>
+                <li><a href="#string-hash">字符串哈希</a></li>
+                <li><a href="#z-function">Z 函数</a></li>
+                <li><a href="#pitfalls">坑点与总结</a></li>
+                <li><a href="#refs">出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="kmp">KMP算法</h2>
 
         <p>大家好。字符串匹配是计算机科学中最古老也最基础的问题之一。你在编辑器中按 Ctrl+F 搜索、在日志文件中 grep 关键词、甚至在 DNA 序列中寻找基因片段——背后都是字符串匹配算法在起作用。在 LeetCode 上，字符串匹配相关的题目虽然不多，但 KMP 算法是面试的高频考点——不是因为题目多，而是因为它<strong>考察候选人理解复杂算法的能力</strong>。</p>
 
-        <p>KMP 算法由 Knuth、Morris 和 Pratt 三位大神在 1977 年提出。它的核心洞察非常深刻：<strong>当匹配失败时，我们已经知道文本串中已经匹配了哪些字符——这些信息不应该被丢弃</strong>。KMP 利用一个 <code>next</code> 数组（也叫前缀函数），在失配时把模式串向右滑动尽可能远的距离，从而避免文本串指针的回退。</p>
+        <p>KMP 算法由 Knuth、Morris 和 Pratt 三位作者在 1977 年提出（Knuth, Morris &amp; Pratt, <em>Fast Pattern Matching in Strings</em>, SIAM Journal on Computing 6(2)，DOI <a href="https://doi.org/10.1137/0206024">10.1137/0206024</a>）。它的核心洞察非常深刻：<strong>当匹配失败时，我们已经知道文本串中已经匹配了哪些字符——这些信息不应该被丢弃</strong>。KMP 利用一个 <code>next</code> 数组（也叫前缀函数），在失配时把模式串向右滑动尽可能远的距离，从而避免文本串指针的回退。</p>
 
         <h3>next数组的构建</h3>
 
         <p><code>next</code> 数组是 KMP 的灵魂。定义：<code>next[i]</code> 表示模式串 <code>P[0..i]</code> 中，最长的相等真前缀和真后缀的长度。有点绕？简单说：对于模式串的每个前缀，它自己最长的"头尾相同"的部分有多长。</p>
+
+        <figure id="fig-prefix">
+            <svg viewBox="0 0 360 202" role="img" aria-label="模式串 ababaca 的前缀函数取值示意图">
+                <title>前缀函数：每个下标 i 记录 P 的前 i 加一个字符中“相等真前缀与真后缀”的最大长度</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="14" y="16" font-size="12" font-weight="700" fill="#7c2d12">前缀函数 π（即 next）—— P = "ababaca"</text>
+                    <rect x="14" y="30" width="44" height="56" rx="6" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="61" y="30" width="44" height="56" rx="6" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="108" y="30" width="44" height="56" rx="6" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="155" y="30" width="44" height="56" rx="6" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="202" y="30" width="44" height="56" rx="6" fill="#ffedd5" stroke="#f97316" stroke-width="2"></rect>
+                    <rect x="249" y="30" width="44" height="56" rx="6" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="296" y="30" width="44" height="56" rx="6" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <text x="36" y="62" text-anchor="middle" font-size="15" fill="#7c2d12"><tspan x="36" y="44" font-size="9" fill="#94a3b8">i=0</tspan>a<tspan x="36" y="80" font-size="13" fill="#0c4a6e">0</tspan></text>
+                    <text x="83" y="62" text-anchor="middle" font-size="15" fill="#7c2d12"><tspan x="83" y="44" font-size="9" fill="#94a3b8">i=1</tspan>b<tspan x="83" y="80" font-size="13" fill="#0c4a6e">0</tspan></text>
+                    <text x="130" y="62" text-anchor="middle" font-size="15" fill="#7c2d12"><tspan x="130" y="44" font-size="9" fill="#94a3b8">i=2</tspan>a<tspan x="130" y="80" font-size="13" fill="#0c4a6e">1</tspan></text>
+                    <text x="177" y="62" text-anchor="middle" font-size="15" fill="#7c2d12"><tspan x="177" y="44" font-size="9" fill="#94a3b8">i=3</tspan>b<tspan x="177" y="80" font-size="13" fill="#0c4a6e">2</tspan></text>
+                    <text x="224" y="62" text-anchor="middle" font-size="15" fill="#7c2d12"><tspan x="224" y="44" font-size="9" fill="#94a3b8">i=4</tspan>a<tspan x="224" y="80" font-size="13" fill="#c2410c" font-weight="700">3</tspan></text>
+                    <text x="271" y="62" text-anchor="middle" font-size="15" fill="#7c2d12"><tspan x="271" y="44" font-size="9" fill="#94a3b8">i=5</tspan>c<tspan x="271" y="80" font-size="13" fill="#0c4a6e">0</tspan></text>
+                    <text x="318" y="62" text-anchor="middle" font-size="15" fill="#7c2d12"><tspan x="318" y="44" font-size="9" fill="#94a3b8">i=6</tspan>a<tspan x="318" y="80" font-size="13" fill="#0c4a6e">1</tspan></text>
+                    <text x="14" y="104" font-size="11" fill="#94a3b8">上行 = 下标 i；中间 = 字符 P[i]；下行 = π[i]</text>
+                    <text x="14" y="132" font-size="11.5" fill="#c2410c">i=4：「ababa」的「aba」既是真前缀也是真后缀 → π[4] = 3</text>
+                    <text x="14" y="154" font-size="11.5" fill="#475569">i=5：加 c 后头尾不再相等，回退后仍不等 → π[5] = 0</text>
+                    <text x="14" y="176" font-size="11.5" fill="#475569">i=6：「ababaca」的头尾「a」相等 → π[6] = 1</text>
+                    <text x="14" y="196" font-size="11" fill="#64748b">π 数组共 7 项，这就是算 “ababaca” 的完整答案</text>
+                </g>
+            </svg>
+            <figcaption>“ababaca” 的前缀函数逐项取值。橙色格（i=4）是理解 KMP 的关键：前缀 “aba” 与后缀 “aba” 完全相等，所以在 i=5 失配时模式串只需右移到 i=3 的位置继续比较，而不需要从 0 重新开始。下一节的演示会把每一项<strong>怎么算出来</strong>逐步展开。</figcaption>
+        </figure>
 
         <p>以 <code>"ABABAC"</code> 为例：</p>
 
@@ -127,7 +187,17 @@
             <strong>理解关键：</strong><code>j</code> 既是"已匹配的长度"，也是"下一个要比较的下标"。失配时 <code>j = next[j-1]</code> 是最难理解的一行——它的含义是"利用已经算好的 next 值来回退 j"。把这行想通了，KMP 就等于学会了。
         </div>
 
-        <h3>实现 strStr()（LeetCode 28）</h3>
+        <div class="demo" id="demo-prefix">
+            <p><strong>可交互演示：前缀函数逐项构建</strong>（P = "ababaca"，预期 π = [0, 0, 1, 2, 3, 0, 1]）</p>
+            <div class="demo-controls" role="group" aria-label="前缀函数构建演示控制">
+                <button type="button" id="pf-prev">上一步</button>
+                <button type="button" id="pf-next">下一步</button>
+                <button type="button" id="pf-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="pf-out" role="status" aria-live="polite"></pre>
+        </div>
+
+        <h3 id="strstr">实现 strStr()（LeetCode 28）</h3>
 
         <p>题目标题很直白：给定两个字符串 <code>haystack</code> 和 <code>needle</code>，返回 <code>needle</code> 在 <code>haystack</code> 中出现的第一个位置，不存在则返回 -1。用 KMP 实现：</p>
 
@@ -154,7 +224,7 @@
             <strong>一个真实的故事：</strong>我大学时第一次学 KMP，看了三遍教材都没看懂 next 数组是怎么构建的。后来一个学长说："你就记住，j 是前缀的长度，也是前缀的下一个下标。构建 next 就是用模式串自己匹配自己。"这句话直到我工作后才真正理解。如果你现在也没完全搞懂，没关系——把代码写几遍、跑几个例子，慢慢就通了。
         </div>
 
-        <h2>Rabin-Karp算法</h2>
+        <h2 id="rabin-karp">Rabin-Karp算法</h2>
 
         <p>如果说 KMP 是从"避免重复比较"的角度优化，那么 Rabin-Karp 就是从"快速比较"的角度出发——它利用<strong>哈希</strong>来比较字符串。Rabin-Karp 的核心思想是：把模式串和文本串中的每个长度为 <code>m</code> 的子串都计算哈希值，然后比较哈希值是否相等。</p>
 
@@ -199,7 +269,7 @@
             <strong>Python 模运算的坑：</strong><code>window_hash - ord(text[i-1]) * power</code> 在 Python 中可能变成负数！虽然 Python 的 <code>%</code> 能将负数取模为正数，但最好统一用 <code>(x % mod + mod) % mod</code> 来保证结果在 <code>[0, mod-1]</code> 范围内。这是一个很容易在生产环境中引发 bug 的细节。
         </div>
 
-        <h2>字符串哈希</h2>
+        <h2 id="string-hash">字符串哈希</h2>
 
         <p>Rabin-Karp 用的是单次滚动哈希。更一般的<strong>字符串哈希</strong>（也叫前缀哈希）思想是：预处理出字符串所有前缀的哈希值，然后通过公式 <code>O(1)</code> 时间计算任意子串的哈希值。</p>
 
@@ -247,9 +317,21 @@
 
         <p>这里用了一个巧妙的方法：因为字符集只有 4 个，每个字符用 2 位二进制数表示，10 个字符正好用 20 位整数表示——<strong>不需要取模，就没有冲突！</strong>这是位运算在字符串哈希中的惊艳应用。</p>
 
-        <h2>Z函数</h2>
+        <h2 id="z-function">Z函数</h2>
 
         <p>Z 函数（也叫 Z-algorithm）是 KMP 之外另一种线性时间字符串匹配算法。定义 <code>Z[i]</code> 为字符串 <code>s</code> 从 <code>i</code> 开始的后缀和 <code>s</code> 整个字符串的最长公共前缀的长度。换句话说，<code>Z[i]</code> 告诉我们"从 i 开始的子串和开头有多像"。</p>
+
+        <div class="eq-scroll" data-math-scroll tabindex="0" role="region" aria-label="Z 函数的定义与匹配判据，可横向滚动">
+            <math display="block" aria-label="Z 函数的定义：第 i 个位置的 Z 值等于字符串 s 与其第 i 个后缀的最长公共前缀长度；匹配判据为 Z 值不小于模式串长度">
+                <mrow>
+                    <mi>Z</mi><mo>[</mo><mi>i</mi><mo>]</mo><mo>=</mo>
+                    <mo>|</mo><mi>lcp</mi><mo>(</mo><mi>s</mi><mo>,</mo><msub><mi>s</mi><mi>i</mi></msub><mo>)</mo><mo>|</mo>
+                    <mo>,</mo><mspace width="0.7em"></mspace>
+                    <mi>match</mi><mo>⇔</mo><mi>Z</mi><mo>[</mo><mi>i</mi><mo>]</mo><mo>≥</mo><mo>|</mo><mi>P</mi><mo>|</mo>
+                </mrow>
+            </math>
+        </div>
+        <p class="cite">这里 <code>lcp</code> 表示最长公共前缀（longest common prefix）。两个式子合起来就是 Z 函数做匹配的全部依据：先把 <code>P + '$' + T</code> 拼起来，只有 <code>Z[i] ≥ |P|</code> 的位置才可能是一次完整匹配（分隔符保证匹配不会跨过边界）。</p>
 
         <pre><code>def z_function(s):
             n = len(s)
@@ -266,6 +348,39 @@
             return z</code></pre>
 
         <p>要利用 Z 函数做字符串匹配，只需要把模式串 <code>P</code> 和文本串 <code>T</code> 拼成一个新串 <code>P + '$' + T</code>，其中 <code>$</code> 是一个不在任何字符串中出现的分隔符。然后计算这个新串的 Z 函数——<strong>Z 值等于 <code>len(P)</code> 的位置就是匹配到的位置</strong>。</p>
+
+        <figure id="fig-z">
+            <svg viewBox="0 0 360 210" role="img" aria-label="用拼接串 aba 加分隔符加 ababa 的 Z 值找匹配位置">
+                <title>把 P 与 T 拼成 aba$ababa 后求 Z 函数，凡是 Z 值等于 P 长度的位置就是一次完整匹配</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="10" y="16" font-size="12" font-weight="700" fill="#7c2d12">s = P + "$" + T = "aba$ababa"（P = "aba"，T = "ababa"）</text>
+                    <rect x="10" y="30" width="36" height="56" rx="5" fill="#e0f2fe" stroke="#0ea5e9"></rect>
+                    <rect x="48" y="30" width="36" height="56" rx="5" fill="#e0f2fe" stroke="#0ea5e9"></rect>
+                    <rect x="86" y="30" width="36" height="56" rx="5" fill="#e0f2fe" stroke="#0ea5e9"></rect>
+                    <rect x="124" y="30" width="36" height="56" rx="5" fill="#fef9c3" stroke="#facc15"></rect>
+                    <rect x="162" y="30" width="36" height="56" rx="5" fill="#dcfce7" stroke="#22c55e" stroke-width="2"></rect>
+                    <rect x="200" y="30" width="36" height="56" rx="5" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="238" y="30" width="36" height="56" rx="5" fill="#dcfce7" stroke="#22c55e" stroke-width="2"></rect>
+                    <rect x="276" y="30" width="36" height="56" rx="5" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <rect x="314" y="30" width="36" height="56" rx="5" fill="#f8fafc" stroke="#cbd5e1"></rect>
+                    <text x="28" y="62" text-anchor="middle" font-size="15" fill="#0c4a6e"><tspan x="28" y="44" font-size="9" fill="#94a3b8">0</tspan>a<tspan x="28" y="80" font-size="12" fill="#94a3b8">9</tspan></text>
+                    <text x="66" y="62" text-anchor="middle" font-size="15" fill="#0c4a6e"><tspan x="66" y="44" font-size="9" fill="#94a3b8">1</tspan>b<tspan x="66" y="80" font-size="12" fill="#334155">0</tspan></text>
+                    <text x="104" y="62" text-anchor="middle" font-size="15" fill="#0c4a6e"><tspan x="104" y="44" font-size="9" fill="#94a3b8">2</tspan>a<tspan x="104" y="80" font-size="12" fill="#334155">1</tspan></text>
+                    <text x="142" y="62" text-anchor="middle" font-size="15" fill="#854d0e"><tspan x="142" y="44" font-size="9" fill="#94a3b8">3</tspan>$<tspan x="142" y="80" font-size="12" fill="#334155">0</tspan></text>
+                    <text x="180" y="62" text-anchor="middle" font-size="15" fill="#166534"><tspan x="180" y="44" font-size="9" fill="#94a3b8">4</tspan>a<tspan x="180" y="80" font-size="12" fill="#166534" font-weight="700">3</tspan></text>
+                    <text x="218" y="62" text-anchor="middle" font-size="15" fill="#334155"><tspan x="218" y="44" font-size="9" fill="#94a3b8">5</tspan>b<tspan x="218" y="80" font-size="12" fill="#334155">0</tspan></text>
+                    <text x="256" y="62" text-anchor="middle" font-size="15" fill="#166534"><tspan x="256" y="44" font-size="9" fill="#94a3b8">6</tspan>a<tspan x="256" y="80" font-size="12" fill="#166534" font-weight="700">3</tspan></text>
+                    <text x="294" y="62" text-anchor="middle" font-size="15" fill="#334155"><tspan x="294" y="44" font-size="9" fill="#94a3b8">7</tspan>b<tspan x="294" y="80" font-size="12" fill="#334155">0</tspan></text>
+                    <text x="332" y="62" text-anchor="middle" font-size="15" fill="#334155"><tspan x="332" y="44" font-size="9" fill="#94a3b8">8</tspan>a<tspan x="332" y="80" font-size="12" fill="#334155">1</tspan></text>
+                    <text x="10" y="104" font-size="11" fill="#94a3b8">上行 = 下标 i；中间 = 字符；下行 = Z[i]</text>
+                    <text x="10" y="132" font-size="11.5" fill="#166534">Z[4] = 3 且 Z[6] = 3，都等于 |P| = 3 → 两处匹配</text>
+                    <text x="10" y="154" font-size="11.5" fill="#475569">对应 T = "ababa" 中位置 0 与 2 都匹配 "aba"</text>
+                    <text x="10" y="176" font-size="11.5" fill="#854d0e">黄色格是分隔符 $：它保证匹配不会跨过边界</text>
+                    <text x="10" y="198" font-size="11" fill="#64748b">Z[0] 按约定记为 n（即串长 9），不参与匹配判据</text>
+                </g>
+            </svg>
+            <figcaption>Z 函数做字符串匹配的完整图形。蓝色三格是模式串 P 本身，黄色是分隔符，右侧是文本串 T；两个绿格（i=4 与 i=6）的 Z 值都等于 |P| = 3，所以它们就是匹配发生的位置。分隔符的作用是：由于它不出现在任何串里，任何跨越 P 与 T 的“前缀相等”都会在它这里立刻失败，从而不会产生虚假匹配。</figcaption>
+        </figure>
 
         <div class="tip">
             <strong>KMP vs Z 函数：</strong>两者都是 <code>O(n+m)</code> 时间的线性匹配算法。KMP 的 next 数组侧重于"失配后跳到哪里"，Z 函数侧重于"每个后缀和开头的匹配长度"。实现上 Z 函数更简洁，但 KMP 更常见于面试题中。我的建议是：面试时优先用 KMP（面试官更熟悉），竞赛时用 Z 函数（代码短）。
@@ -313,7 +428,7 @@
             </tbody>
         </table>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <h3>KMP 的 next 数组理解难点</h3>
 
@@ -337,6 +452,31 @@
             <strong>面试建议：</strong>如果面试遇到字符串匹配，首选 KMP。面试官问 KMP 通常期望你能手写 next 数组的实现——这是硬功夫，不能投机。实在记不住 next 构建，也可以先暴力实现 <code>O(nm)</code> 版本，再讲清楚 KMP 的思路，面试官也会认可你的问题分析能力。
         </div>
 
+        <h2 id="refs">出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>结论</th><th>出处</th><th>前提 / 例外</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>KMP 的 O(n+m) 时间</td><td>Knuth, Morris &amp; Pratt, <em>Fast Pattern Matching in Strings</em>, SIAM J. Comput. 6(2), 1977（DOI 10.1137/0206024）</td><td>前缀函数保证文本指针不回退；模式串指针的总回退量不超过 m</td></tr>
+                    <tr><td>strStr 的实现</td><td>LeetCode 28 题设：needle 为空时返回 0</td><td>面试中允许直接调用库函数（分数会打折）</td></tr>
+                    <tr><td>Rabin-Karp 平均 O(n+m)</td><td>滚动哈希：相邻窗口的哈希值可增量更新</td><td><strong>最坏 O(nm)</strong>（大量哈希碰撞时需要逐字符校验）</td></tr>
+                    <tr><td>字符串哈希 O(1) 区间比较</td><td>前缀哈希 + 取模，需要 base 与模数</td><td>未双哈希时存在被构造出碰撞的可能</td></tr>
+                    <tr><td>Z 函数 O(n+m)</td><td>Z 算法的 l/r 区间复用（与 KMP 同源的均摊思路）</td><td>空间为 O(n+m)（拼接后的长度）</td></tr>
+                    <tr><td>重复 DNA 序列</td><td>LeetCode 187：子串长度固定为 10，字符集只有 4 个</td><td>4 个字符 × 2 位 = 20 位可用整数无缝表示，无需取模</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>演示与图中的模式串 "ababaca"、以及 Z 函数例的 "aba"/"ababa" 都是<strong>教学示意</strong>规模，目的是让每项都能手算核对。</li>
+            <li>O(n+m) 是<strong>字符比较次数</strong>的渐近界，不含哈希计算的常数；Rabin-Karp 的“平均”依赖哈希函数与输入分布。</li>
+            <li>本章不覆盖多模式串匹配（Aho-Corasick）、后缀数组/后缀自动机，也不讨论 Unicode 下“字符”与“字节”的区别。</li>
+        </ul>
+
         <p>好了，字符串匹配的四大算法就讲到这里。下一章我们将进入本书最"硬核"的数据结构——<strong>线段树与树状数组</strong>。它们是处理区间查询和更新问题的终极武器，尤其在 LeetCode 的 Hard 题目中频繁出现。我们下一章见！</p>
 
         <div class="footer-nav">
@@ -344,8 +484,62 @@
             <a href="index.html">📖 返回目录</a>
             <a href="22.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var p = 'ababaca';
+    var n = p.length, pi = new Array(n).fill(0), states = [];
+    function snapPi() { return '[' + pi.join(', ') + ']'; }
+    states.push({ i: -1, pi: snapPi(), arr: pi.slice(), msg: '初始：π[0] = 0 —— 单个字符不存在“真”前后缀。' });
+    for (var i = 1; i < n; i++) {
+        var j = pi[i - 1];
+        var trace = [];
+        while (j > 0 && p[i] !== p[j]) {
+            trace.push('p[' + i + ']="' + p[i] + '" ≠ p[' + j + ']="' + p[j] + '"，j 回退到 π[' + (j - 1) + '] = ' + pi[j - 1]);
+            j = pi[j - 1];
+        }
+        if (p[i] === p[j]) {
+            j = j + 1;
+            trace.push('p[' + i + '] = p[' + (j - 1) + '] = "' + p[i] + '"，把匹配长度延长到 ' + j);
+        } else {
+            trace.push('j 已经回退到 0 且首字符也不相等，保持 0');
+        }
+        pi[i] = j;
+        states.push({ i: i, pi: snapPi(), arr: pi.slice(), msg: trace.join('；') + ' → π[' + i + '] = ' + j + '。' });
+    }
+    states.push({
+        i: -1, pi: snapPi(), arr: pi.slice(),
+        msg: '构建完成：π = ' + snapPi() + '，其中 π[4] = 3 说明前缀 “aba” 与后缀 “aba” 相等——这就是失配时能直接右移的依据。'
+    });
+
+    var pos = 0;
+    var out = document.getElementById('pf-out');
+    function render() {
+        var st = states[pos];
+        var lines = [];
+        lines.push('P    =  ' + p.split('').join('   '));
+        lines.push('next =  ' + st.arr.map(function (v, k) {
+            return st.i === k ? '[' + v + ']' : ' ' + v + ' ';
+        }).join('  '));
+        out.textContent = st.msg + '\n\n' + lines.join('\n')
+            + '\n\n进度 ' + (pos + 1) + '/' + states.length;
+    }
+    document.getElementById('pf-next').addEventListener('click', function () {
+        if (pos < states.length - 1) pos++;
+        render();
+    });
+    document.getElementById('pf-prev').addEventListener('click', function () {
+        if (pos > 0) pos--;
+        render();
+    });
+    document.getElementById('pf-reset').addEventListener('click', function () {
+        pos = 0;
+        render();
+    });
+    render();
+})();
+</script>
 </body>
 </html>
