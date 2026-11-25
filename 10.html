@@ -5,11 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第10章 回溯算法</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端的布局兜底：不依赖外部样式表也能不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x, .eq-scroll, [data-math-scroll] { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>💻 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 数组与哈希表</a></li>
@@ -41,10 +56,25 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>回溯三部曲 — 路径 + 选择列表 + 撤销选择</h2>
+        <h1>回溯算法：在一棵决策树上做深度优先搜索</h1>
+        <p class="lede">回溯不是一堆要背的模板，而是<strong>“路径 + 选择列表 + 撤销选择”这一棵决策树的 DFS</strong>。排列、组合、子集、N 皇后、数独全都是同一棵树的变体，区别只在选择列表怎么定义、剪枝条件怎么写。本章先把这棵树画清楚，再看剪枝为什么是必要条件。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#framework">回溯三部曲</a></li>
+                <li><a href="#pnc">排列 / 组合 / 子集</a></li>
+                <li><a href="#board">棋盘问题</a></li>
+                <li><a href="#pruning">剪枝优化</a></li>
+                <li><a href="#pitfalls">踩坑与总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="framework">回溯三部曲 — 路径 + 选择列表 + 撤销选择</h2>
 
         <p>大家好，我是你们的讲师。欢迎来到第十章——回溯算法。如果说二叉树递归是"简单的递归"，那么回溯就是<strong>"带状态的递归"</strong>。它解决的是这样一类问题：<strong>在多个决策步骤中，尝试每一种可能性，走不通就回头</strong>。典型的应用场景包括排列、组合、子集、N 皇后、数独等。</p>
 
@@ -66,7 +96,50 @@
             <strong>框架力量：</strong>如果你看懂了上面的代码，你就掌握了回溯算法的"心法"。剩下的工作只是根据具体问题，定义清楚什么是"路径"、什么是"选择列表"、什么是"结束条件"。这就是为什么很多 LeetCode 题解区的大佬，写回溯题就像在填空题一样——框架固定，填逻辑就行。
         </div>
 
-        <h2>排列 / 组合 / 子集</h2>
+        <figure id="fig-tree">
+            <svg viewBox="0 0 360 272" role="img" aria-label="回溯决策树示意图，以 1、2、3 的全排列为例，高亮一条搜索路径并标注撤销选挥">
+                <title>回溯算法的决策树：每个节点是一个状态，每条边是一个选挥；向下做选择、向上撤销</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="14" y="14" font-size="11.5" font-weight="700" fill="#7c2d12">决策树（以 [1, 2, 3] 全排列为例）</text>
+                    <g stroke="#cbd5e1" stroke-width="1.5" fill="none">
+                        <line x1="180" y1="58" x2="80" y2="104"></line>
+                        <line x1="180" y1="58" x2="280" y2="104"></line>
+                        <line x1="80" y1="128" x2="125" y2="174"></line>
+                        <line x1="125" y1="198" x2="120" y2="238"></line>
+                    </g>
+                    <g stroke="#ea580c" stroke-width="2.5" fill="none">
+                        <line x1="180" y1="58" x2="80" y2="104"></line>
+                        <line x1="80" y1="128" x2="45" y2="174"></line>
+                        <line x1="45" y1="198" x2="30" y2="238"></line>
+                    </g>
+                    <g stroke="#0ea5e9" stroke-width="1.8" stroke-dasharray="4 3" fill="none">
+                        <path d="M60 176 C 78 150, 90 140, 96 126"></path>
+                    </g>
+                    <text x="100" y="152" font-size="10.5" fill="#0c4a6e">撤销选择（回溯）</text>
+                    <g font-size="11" text-anchor="middle">
+                        <rect x="153" y="34" width="54" height="24" rx="12" fill="#fff7ed" stroke="#fdba74"></rect>
+                        <text x="180" y="50" fill="#9a3412">[]</text>
+                        <rect x="53" y="104" width="54" height="24" rx="12" fill="#f97316" stroke="#c2410c"></rect>
+                        <text x="80" y="120" fill="#fff">[1]</text>
+                        <rect x="153" y="104" width="54" height="24" rx="12" fill="#fff7ed" stroke="#fdba74"></rect>
+                        <text x="180" y="120" fill="#9a3412">[2]</text>
+                        <rect x="253" y="104" width="54" height="24" rx="12" fill="#fff7ed" stroke="#fdba74"></rect>
+                        <text x="280" y="120" fill="#9a3412">[3]</text>
+                        <rect x="18" y="174" width="54" height="24" rx="12" fill="#f97316" stroke="#c2410c"></rect>
+                        <text x="45" y="190" fill="#fff">[1,2]</text>
+                        <rect x="98" y="174" width="54" height="24" rx="12" fill="#fff7ed" stroke="#fdba74"></rect>
+                        <text x="125" y="190" fill="#9a3412">[1,3]</text>
+                        <rect x="3" y="238" width="54" height="24" rx="12" fill="#dcfce7" stroke="#22c55e"></rect>
+                        <text x="30" y="254" fill="#166534">[1,2,3]</text>
+                        <rect x="93" y="238" width="54" height="24" rx="12" fill="#fff7ed" stroke="#fdba74"></rect>
+                        <text x="120" y="254" fill="#9a3412">[1,3,2]</text>
+                    </g>
+                </g>
+            </svg>
+            <figcaption>回溯就是在这棵<strong>决策树</strong>上做深度优先搜索：根节点是空路径 <code>[]</code>，每向下一层就“做选择”（追加一个尚未使用的元素），每向上一层就“撤销选择”（<code>path.pop()</code>）。橙色是当前正在探索的一条路径；蓝色虚线箭头表示回溯——从 <code>[1,2]</code> 返回父节点 <code>[1]</code> 时把刚加入的元素移除，使状态还原。关键点：与题目对应的不是树本身，而是<strong>选择列表的定义</strong>——排列用 <code>used</code> 数组控制“不能用已选过的”，组合与子集用 <code>start</code> 参数控制“只能往后选”。</figcaption>
+        </figure>
+
+        <h2 id="pnc">排列 / 组合 / 子集</h2>
 
         <p>排列、组合、子集是回溯算法最经典的应用场景，也是 LeetCode 面试中出现频率极高的题目。</p>
 
@@ -161,7 +234,17 @@ def subsets_with_dup(nums):
             <strong>去重心法：</strong>排序 + used 数组用于排列的去重（如 47），排序 + start 参数用于组合/子集的去重（如 40、90）。两者的区别在于——排列需要 used 数组记录全局使用状态，而组合/子集只需要 start 控制方向。
         </div>
 
-        <h2>棋盘问题</h2>
+        <div class="demo" id="demo-subsets">
+            <p><strong>单步演示（LeetCode 78 子集）：</strong>在 nums = [1, 2, 3] 上逐步走完整棵决策树，同时观察<strong>当前路径</strong>与<strong>结果集</strong>的变化。</p>
+            <div class="demo-controls" role="group" aria-label="子集回溯演示控制">
+                <button type="button" id="bt-prev">上一步</button>
+                <button type="button" id="bt-next">下一步</button>
+                <button type="button" id="bt-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="bt-out" role="status" aria-live="polite"></pre>
+        </div>
+
+        <h2 id="board">棋盘问题</h2>
 
         <p>棋盘类问题是回溯算法最漂亮的展示——搜索空间大、约束多、剪枝效果显著。</p>
 
@@ -210,7 +293,7 @@ def subsets_with_dup(nums):
             <strong>潜在风险：</strong>N 皇后和数独的搜索空间都很大。N=8 时还好，但 N=20 的皇后问题不加剪枝的话，搜索树的大小是 20! ≈ 2.4×10¹⁸——这辈子都等不到结果。所以剪枝不是"优化"，而是<strong>必要条件</strong>。在 N 皇后中，用集合记录列和对角线让检查时间降到 O(1)；在数独中，预先计算每行/每列/每宫格的可选数字。
         </div>
 
-        <h2>剪枝优化</h2>
+        <h2 id="pruning">剪枝优化</h2>
 
         <p>剪枝是回溯算法性能的关键。我把剪枝策略分为三种：</p>
 
@@ -282,7 +365,7 @@ def subsets_with_dup(nums):
             </tbody>
         </table>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <h3>坑 1：引用传值导致的路径污染</h3>
 
@@ -304,13 +387,76 @@ def subsets_with_dup(nums):
 
         <p>回溯算法的魅力在于，它用极其统一的框架解决了看似毫无关联的问题——排列、组合、子集、N皇后、数独，全都是同一棵树的不同遍历方式。下一章我们将进入<strong>贪心算法</strong>——一个"每一步都选最好的，最终得到全局最优"的思维范式。贪心和回溯形成鲜明对比：回溯是"尝试所有可能"，贪心是"只在当下做最优选择"。我们将详细剖析什么时候能用贪心、什么时候不能。下一章见！</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>问题</th><th>出处（题目号）</th><th>选择列表 / 剪枝</th><th>量级说明</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>全排列</td><td>46 全排列</td><td>未使用的元素，<code>used</code> 数组</td><td>结果数 = n!</td></tr>
+                    <tr><td>组合</td><td>77 组合</td><td><code>start</code> 递增，只往后选</td><td>结果数 = C(n, k)</td></tr>
+                    <tr><td>子集</td><td>78 子集</td><td><code>start</code> 递增，每层都收集</td><td>结果数 = 2ⁿ</td></tr>
+                    <tr><td>含重复去重</td><td>40 / 47 / 90</td><td>先排序，同层 <code>i &gt; start and nums[i]==nums[i-1]</code></td><td>数量以去重后为准</td></tr>
+                    <tr><td>N 皇后</td><td>51 N 皇后</td><td>集合记录列、<code>row−col</code>、<code>row+col</code></td><td>剪枝后搜索量级 ≈ n!（示意）</td></tr>
+                    <tr><td>解数独</td><td>37 解数独</td><td>行/列/3×3 宫格约束，MRV 启发式</td><td>最坏 9^(空格数)</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>演示中的 nums = [1, 2, 3] 与图中的路径均为<strong>教学示意</strong>，用来说明决策树的遍历过程，不代表某道题的官方测试用例。</li>
+            <li>“N 皇后 ≈ n!”是<strong>数量级示意</strong>：不加列/对角线剪枝时搜索量远大于此，加剪枝后才接近该量级；不同文献统计口径不一。</li>
+            <li>回溯的时间复杂度取决于<strong>解空间大小 × 每次操作代价</strong>，不能只看指数项；与本题无关的排列组合公式不再展开。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="09.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
             <a href="11.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var nums = [1, 2, 3];
+    var res = [];
+    var states = [];
+    function pushState(path, msg) {
+        states.push({ path: path.slice(), res: res.slice(), msg: msg });
+    }
+    function bt(start, path) {
+        res.push(path.slice());
+        pushState(path, '收集子集 [' + path.join(',') + ']' + (path.length ? '' : '（空集）') + '。');
+        for (var i = start; i < nums.length; i++) {
+            path.push(nums[i]);
+            pushState(path, '做选择：把 ' + nums[i] + ' 加入路径 → [' + path.join(',') + ']，递归进入下一层。');
+            bt(i + 1, path);
+            path.pop();
+            pushState(path, '撤销选择：弹出 ' + nums[i] + '，回到 [' + path.join(',') + ']。');
+        }
+    }
+    bt(0, []);
+    pushState([], '搜索结束，共得到 ' + res.length + ' 个子集。');
+    function fmt(list) {
+        return '[' + list.map(function (s) { return '(' + s.join(',') + ')'; }).join(', ') + ']';
+    }
+    var pos = 0;
+    var out = document.getElementById('bt-out');
+    function render() {
+        var s = states[pos];
+        out.textContent = s.msg + '\n当前路径 path = [' + s.path.join(',') + ']'
+            + '\n结果集 res = ' + fmt(s.res)
+            + '\n进度 ' + (pos + 1) + '/' + states.length;
+    }
+    document.getElementById('bt-next').addEventListener('click', function () { if (pos < states.length - 1) { pos++; render(); } });
+    document.getElementById('bt-prev').addEventListener('click', function () { if (pos > 0) { pos--; render(); } });
+    document.getElementById('bt-reset').addEventListener('click', function () { pos = 0; render(); });
+    render();
+})();
+</script>
 </body>
 </html>
