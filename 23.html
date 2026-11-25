@@ -5,11 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第23章 设计类题目</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端的布局兜底：不依赖外部样式表也能不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x, .eq-scroll, [data-math-scroll] { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>💻 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 数组与哈希表</a></li>
@@ -41,10 +56,28 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>设计类题目概览</h2>
+        <h1>设计类题目：用数据结构兑现接口的复杂度承诺</h1>
+        <p class="lede">设计题不考某个算法，而考<strong>抽象、权衡与鲁棒</strong>：把需求翻译成数据结构与接口，再用时间/空间取舍兑现 O(1) 或 O(log n) 的承诺。本章从最经典的 LRU 缓存（哈希表 + 双向链表）出发，再推到 LFU、O(1) 随机集与迭代器，最后归纳出通用的答题模板。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#intro">设计类题目概览</a></li>
+                <li><a href="#lru">LRU 缓存</a></li>
+                <li><a href="#lfu">LFU 缓存</a></li>
+                <li><a href="#o1">O(1) 数据结构设计</a></li>
+                <li><a href="#iterator">迭代器设计</a></li>
+                <li><a href="#code">完整代码与测试框架</a></li>
+                <li><a href="#template">设计题的通用面试模板</a></li>
+                <li><a href="#pitfalls">踩坑与总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="intro">设计类题目概览</h2>
 
         <p>大家好，欢迎来到设计类题目的专场。如果你刷 LeetCode 时只关注"算法正确性"，那这一章可能会让你大开眼界。设计类题目（Object-Oriented Design / Data Structure Design）考察的不是你知不知道 Dijkstra 或者 Floyd，而是<strong>你能不能从零搭建一个满足特定约束的系统</strong>。这类题在面试中非常高频——尤其是 Facebook（Meta）、Amazon、Google 等大厂的第二轮面试，往往就是一道纯设计题，限时 30-45 分钟，没有算法，只有 OOD。</p>
 
@@ -54,7 +87,7 @@
             <strong>核心思路：</strong>设计题没有"标准答案"，但有"最佳实践"。面试官看重的是你做决策的过程——为什么选这个数据结构、为什么用这个时间空间权衡。代码能跑只是及格，讲清楚为什么才是高分。
         </div>
 
-        <h2>LRU缓存 — 哈希表+双向链表实现</h2>
+        <h2 id="lru">LRU缓存 — 哈希表+双向链表实现</h2>
 
         <p><strong>LRU Cache（LeetCode 146）</strong>可能是 LeetCode 上最著名的设计题，没有之一。要求很简单：设计一个缓存类，支持 <code>get(key)</code> 和 <code>put(key, value)</code> 操作，容量固定，当缓存满时淘汰<strong>最久未使用</strong>的键值对。要求两个操作都是 O(1)。</p>
 
@@ -124,14 +157,63 @@ class LRUCache:
             self._add_to_head(node)</code></pre>
 
         <div class="tip">
-            <strong>伪头尾节点的妙用：</strong>如果你不用伪头尾节点（dummy head/tail），那么 <code>_add_to_head</code> 时需要检查 head 是否为 None，<code>_pop_tail</code> 时需要检查 tail 是否为 None——这些 if-else 会有一堆。面试中 95% 的候选人都栽在边界判断上。添加两个哑节点，代码直接清爽一倍。
+            <strong>伪头尾节点的妙用：</strong>如果你不用伪头尾节点（dummy head/tail），那么 <code>_add_to_head</code> 时需要检查 head 是否为 None，<code>_pop_tail</code> 时需要检查 tail 是否为 None——这些 if-else 会有一堆。在面试里，边界判断往往是最容易出错的部分。添加两个哑节点，代码直接清爽一倍。
         </div>
 
         <p>时间复杂度的分析：<code>get</code> 和 <code>put</code> 都只涉及哈希表的 O(1) 查找和链表的 O(1) 指针操作，整体 O(1)。空间复杂度 O(capacity)，因为最多存储 capacity 个节点。</p>
 
         <p>这里我必须分享一个亲身经历。我第一次面 Google 时，LRU 这道题我写了 80 行，满屏的 <code>if node.prev is None</code> 和 <code>if node.next is None</code>——我自己都看晕了。面完以后，一个在 Google 工作的学长给我看了上面这个伪头尾版本，我整个人都不好了。从那以后，我每次遇到链表设计题，第一件事就是加两个哑节点。这个习惯帮我拿了好几个 offer。</p>
 
-        <h2>LFU缓存 — 频率链表设计</h2>
+        <figure id="fig-lru">
+            <svg viewBox="0 0 360 200" role="img" aria-label="LRU 缓存由哈希表与双向链表组成，head 侧为最近使用、tail 侧为最久未使用">
+                <title>LRU 缓存：哈希表 O(1) 定位节点，双向链表 O(1) 调整最近使用顺序</title>
+                <defs>
+                    <marker id="arr" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+                        <path d="M0,0 L6,3 L0,6 z" fill="#0369a1"></path>
+                    </marker>
+                </defs>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="14" y="14" font-size="11.5" font-weight="700" fill="#7c2d12">LRU = 哈希表 + 双向链表</text>
+                    <rect x="14" y="24" width="150" height="44" rx="8" fill="#eff6ff" stroke="#3b82f6"></rect>
+                    <text x="22" y="41" font-size="10" fill="#1e3a8a" font-weight="700">cache（哈希表）：key → node</text>
+                    <text x="22" y="59" font-size="10" fill="#1e40af">1 → ①   2 → ②   3 → ③</text>
+                    <text x="182" y="41" font-size="10" fill="#475569">查找 O(1)：</text>
+                    <text x="182" y="57" font-size="10" fill="#475569">给定 key 直接拿到节点引用</text>
+                    <g stroke="#94a3b8" fill="#e2e8f0">
+                        <rect x="20" y="96" width="36" height="36" rx="6"></rect>
+                        <rect x="280" y="96" width="36" height="36" rx="6"></rect>
+                    </g>
+                    <g stroke="#3b82f6" fill="#dbeafe">
+                        <rect x="70" y="96" width="48" height="36" rx="6"></rect>
+                        <rect x="140" y="96" width="48" height="36" rx="6"></rect>
+                        <rect x="210" y="96" width="48" height="36" rx="6"></rect>
+                    </g>
+                    <g font-size="11" text-anchor="middle">
+                        <text x="38" y="118" fill="#475569">H</text>
+                        <text x="94" y="118" fill="#1e40af" font-weight="700">key=1</text>
+                        <text x="164" y="118" fill="#1e40af" font-weight="700">key=2</text>
+                        <text x="234" y="118" fill="#1e40af" font-weight="700">key=3</text>
+                        <text x="298" y="118" fill="#475569">T</text>
+                    </g>
+                    <g stroke="#0369a1" stroke-width="1.5" marker-end="url(#arr)">
+                        <line x1="58" y1="104" x2="68" y2="104"></line>
+                        <line x1="120" y1="104" x2="138" y2="104"></line>
+                        <line x1="190" y1="104" x2="208" y2="104"></line>
+                        <line x1="260" y1="104" x2="278" y2="104"></line>
+                        <line x1="278" y1="124" x2="260" y2="124"></line>
+                        <line x1="208" y1="124" x2="190" y2="124"></line>
+                        <line x1="138" y1="124" x2="120" y2="124"></line>
+                        <line x1="68" y1="124" x2="58" y2="124"></line>
+                    </g>
+                    <text x="14" y="154" font-size="10" fill="#475569">H、T 是伪头尾节点：H 之后是“最近使用”，T 之前是“最久未使用”。</text>
+                    <text x="14" y="172" font-size="10" fill="#475569">get 命中 → 把节点移到 H 之后；put 超容量 → 摘下 T.prev 并删除哈希表条目。</text>
+                    <text x="14" y="192" font-size="10" fill="#64748b">图中 key 与节点布局为教学示意。</text>
+                </g>
+            </svg>
+            <figcaption>LRU 的两个 O(1) 分别由两个结构提供：<strong>哈希表</strong>回答“key 在不在、在哪个节点”，<strong>双向链表</strong>回答“谁最近用过”并提供 O(1) 的插入与删除。双向链表之所以必须是<strong>双向</strong>，是因为摘下任意节点需要同时改它的前驱和后继指向；若只保留单链表，想摘下尾节点就得从头遍历到尾，就退化成 O(n) 了。两个伪头尾节点把链表变成恒非空，于是所有操作都不用再判断“是不是在头/尾”。</figcaption>
+        </figure>
+
+        <h2 id="lfu">LFU缓存 — 频率链表设计</h2>
 
         <p>LRU 的升级版来了——<strong>LFU Cache（LeetCode 460）</strong>。LFU 的全称是 Least Frequently Used——当缓存满时，淘汰<strong>访问频率最低</strong>的键；如果多个键频率相同，则淘汰最久未使用的那个（LRU 作为 tiebreaker）。</p>
 
@@ -237,7 +319,17 @@ class LFUCache:
 
         <p>LFU 的面试频率低于 LRU，但一旦被问到，就是区分"写过多道题"和"真正理解设计"的分水岭。能流利写出 LFU 的候选人，基本上设计类题目就不用再考了。</p>
 
-        <h2>O(1)数据结构设计</h2>
+        <div class="demo" id="demo-lru">
+            <p><strong>单步演示（LRU 缓存，146）：</strong>capacity = 2，依次执行 put(1,1)、put(2,2)、get(1)、put(3,3)、get(2)、put(4,4)、get(1)、get(3)、get(4)，看淘汰与顺序变化。</p>
+            <div class="demo-controls" role="group" aria-label="LRU 缓存演示控制">
+                <button type="button" id="lru-prev">上一步</button>
+                <button type="button" id="lru-next">下一步</button>
+                <button type="button" id="lru-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="lru-out" role="status" aria-live="polite"></pre>
+        </div>
+
+        <h2 id="o1">O(1)数据结构设计</h2>
 
         <p>LeetCode 上有几道题专门考察"常数时间操作"的设计能力。咱们挑两个最经典的。</p>
 
@@ -313,7 +405,7 @@ class Solution:
             <strong>核心思想：</strong>把黑名单数字"映射"到白名单数字。范围 [0, usable-1] 中如果有黑名单元素，就映射到 [usable, n-1] 中不在黑名单的数字。这样 <code>pick</code> 只需要在 [0, usable-1] 中随机取数，然后通过映射（如果有的话）拿到真正的值。
         </div>
 
-        <h2>迭代器设计</h2>
+        <h2 id="iterator">迭代器设计</h2>
 
         <p>迭代器设计题考察的是<strong>状态机思维</strong>——你怎么把一个复杂的数据结构遍历过程，封装成一个"每次调用 next() 返回一个元素"的迭代器。</p>
 
@@ -392,7 +484,7 @@ class Solution:
             <strong>面试加分项：</strong>当你实现迭代器时，提到"惰性求值"（Lazy Evaluation）——只在需要时计算，不做提前展开——面试官会认为你有函数式编程的思想。这在处理无限序列或大型数据集时非常重要。
         </div>
 
-        <h2>完整代码与测试框架</h2>
+        <h2 id="code">完整代码与测试框架</h2>
 
         <p>为了你面试时能一次性写出无 bug 的设计题代码，这里给出 LRU Cache 的完整 LeetCode 提交版（包含所有类和主逻辑）：</p>
 
@@ -450,7 +542,7 @@ class Solution:
             <strong>生产环境 vs 面试环境：</strong>Python 的标准库 <code>collections.OrderedDict</code> 可以直接实现 LRU——<code>move_to_end()</code> + <code>popitem(last=False)</code> 六行代码搞定。但在面试中我建议你手写双向链表，因为面试官要考察的就是"你是否真的理解链表操作"。用 OrderedDict 会被当作调包侠。
         </div>
 
-        <h2>设计题的通用面试模板</h2>
+        <h2 id="template">设计题的通用面试模板</h2>
 
         <p>经历了 LRU、LFU、O(1) 集合、迭代器这四类典型题后，我们可以总结出设计题的通用解题框架：</p>
 
@@ -498,7 +590,7 @@ class Solution:
 
         <p>我用这个模板反复训练，从 LRU 到 LFU 到跳表设计，每道题从读题到写完不超过 15 分钟。你不需要背代码，而是背这个<strong>思维框架</strong>。</p>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <p>设计类题目最大的坑就是"过度设计"和"设计不足"之间的平衡。以 LRU 为例，面试中最常见的三个错误：</p>
 
@@ -516,13 +608,70 @@ class Solution:
 
         <p>设计能力是区分"刷题机器"和"真正工程师"的分水岭。掌握了 LRU 和 LFU，你就掌握了"空间换时间"和"哈希表+链表"这个黄金组合。下一章我们将进入一个完全不同的领域——<strong>多线程与并发</strong>。在并发场景下，不仅仅是正确性，还有线程安全的挑战。我们下一章见！</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>设计题</th><th>出处（题目号）</th><th>关键结构</th><th>复杂度</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>LRU 缓存</td><td>146 LRU 缓存</td><td>哈希表 + 双向链表（伪头尾）</td><td>get/put 均 O(1)</td></tr>
+                    <tr><td>LFU 缓存</td><td>460 LFU 缓存</td><td>频率桶 + 双向链表，同频用 LRU 破平局</td><td>get/put 均 O(1)</td></tr>
+                    <tr><td>常数时间随机集</td><td>380 O(1) 插入、删除、获取随机元素</td><td>数组 + “值→下标”哈希，删时与尾部交换</td><td>均摊 O(1)</td></tr>
+                    <tr><td>黑名单随机数</td><td>710 黑名单中的随机数</td><td>哈希映射合法区间</td><td>初始化 O(m)，采样 O(1)</td></tr>
+                    <tr><td>嵌套列表迭代器</td><td>341 扁平化嵌套列表迭代器</td><td>显式栈保存迭代状态</td><td>均摊 O(1) per next</td></tr>
+                    <tr><td>顶端迭代器</td><td>284 顶端迭代器</td><td>缓存 peek 出的元素</td><td>O(1)</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>演示中的操作序列（容量 2 的那组 put/get）与图中的 key 均为<strong>教学示意</strong>，用来说明淘汰与顺序变化，不代表某道题的官方测试用例。</li>
+            <li>“均摊 O(1)”不等于“每次操作都是 O(1)”：如 380 的删除靠与尾部交换，单次可能触发数组扩展，但均摊后是 O(1)。</li>
+            <li>本章的 LFU 要求同频率时淘汰最久未使用（以 LRU 作 tiebreaker）；若题目只要求“频率最低”，实现会更简单。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="22.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
             <a href="24.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var cap = 2, order = [], vals = {}, states = [];
+    function snap(msg) { states.push({ order: order.slice(), vals: Object.assign({}, vals), msg: msg }); }
+    function front(k) { var i = order.indexOf(k); if (i >= 0) order.splice(i, 1); order.unshift(k); }
+    var ops = [['put', 1, 1], ['put', 2, 2], ['get', 1], ['put', 3, 3], ['get', 2], ['put', 4, 4], ['get', 1], ['get', 3], ['get', 4]];
+    snap('初始化：capacity = 2，缓存为空。');
+    for (var i = 0; i < ops.length; i++) {
+        var op = ops[i], k = op[1], v = op[2];
+        if (op[0] === 'get') {
+            if (k in vals) { front(k); snap('get(' + k + ')：命中，值 = ' + vals[k] + '，并把 key ' + k + ' 移到最近使用端。'); }
+            else { snap('get(' + k + ')：未命中，返回 -1（顺序不变）。'); }
+        } else {
+            if (k in vals) { vals[k] = v; front(k); snap('put(' + k + ', ' + v + ')：键已存在，更新值并移到最近使用端。'); }
+            else {
+                if (order.length >= cap) { var old = order.pop(); delete vals[old]; snap('put(' + k + ', ' + v + ')：容量已满，先淘汰最久未使用的 key ' + old + '。'); }
+                vals[k] = v; front(k); snap('put(' + k + ', ' + v + ')：新键写入，置于最近使用端。');
+            }
+        }
+    }
+    var pos = 0, out = document.getElementById('lru-out');
+    function render() {
+        var s = states[pos];
+        out.textContent = s.msg + '\n缓存内容（最近使用 → 最久未使用）= [' + s.order.map(function (k) { return k + ':' + s.vals[k]; }).join(', ') + ']'
+            + '\n进度 ' + (pos + 1) + '/' + states.length;
+    }
+    document.getElementById('lru-next').addEventListener('click', function () { if (pos < states.length - 1) { pos++; render(); } });
+    document.getElementById('lru-prev').addEventListener('click', function () { if (pos > 0) { pos--; render(); } });
+    document.getElementById('lru-reset').addEventListener('click', function () { pos = 0; render(); });
+    render();
+})();
+</script>
 </body>
 </html>
