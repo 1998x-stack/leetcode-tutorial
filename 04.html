@@ -5,11 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第4章 双指针技巧</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端的布局兜底：不依赖外部样式表也能不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x, .eq-scroll, [data-math-scroll] { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>💻 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 数组与哈希表</a></li>
@@ -41,12 +56,27 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>双指针的本质</h2>
+        <h1>双指针技巧：用两个指针代替一层循环</h1>
+        <p class="lede">双指针不是某个具体算法，而是一种<strong>用指针的相对运动换取线性复杂度</strong>的思路。本章按“相向、同向、快慢”三种运动模式拆解：每种模式对应一类问题结构，而不是一堆要背的模板。看清指针在做什么，才能判断它为什么能把 O(n²) 压到 O(n)。</p>
 
-        <p>大家好，我是你们的讲师。今天要讲的是一个看起来"人畜无害"、但实际上变化多端的技巧——<strong>双指针（Two Pointers）</strong>。它是 LeetCode 面试中出现频率最高的技巧之一，据统计有超过 100 道题可以直接用双指针解决。</p>
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#essence">双指针的本质</a></li>
+                <li><a href="#opposite">相向指针（左右夹逼）</a></li>
+                <li><a href="#same">同向指针</a></li>
+                <li><a href="#fastslow">快慢指针</a></li>
+                <li><a href="#pitfalls">踩坑与总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="essence">双指针的本质</h2>
+
+        <p>大家好，我是你们的讲师。今天要讲的是一个看起来"人畜无害"、但实际上变化多端的技巧——<strong>双指针（Two Pointers）</strong>。它是 LeetCode 面试中出现频率最高的技巧之一：LeetCode 官方题解与面试高频清单里，双指针标签下的题目数量在数百道量级，但真正需要掌握的<strong>运动模式只有三种</strong>（相向、同向、快慢），其余多是它们的组合或变形。</p>
 
         <p>双指针的核心思想非常朴素：<strong>用两个指针的协调移动来替代多层循环</strong>。通常一个简单的 for 循环解决不了的问题，加一个指针就解决了。根据指针的移动方向和速度，双指针可以分成三种模式：</p>
 
@@ -60,7 +90,46 @@
             <strong>核心思维：</strong>双指针之所以高效，是因为它利用了数据本身的"序"（有序性）或"位置关系"来剪枝。当问题涉及"查找数组中满足某种条件的元素对"时，先用"排序 + 双指针"这个组合试试。
         </div>
 
-        <h2>相向指针（左右夹逼）</h2>
+        <figure id="fig-modes">
+            <svg viewBox="0 0 360 214" role="img" aria-label="双指针三种运动模式示意图：相向夹逼、同向扫描、快慢步长">
+                <title>双指针的三种运动模式：相向、同向、快慢</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="14" y="16" font-size="12" font-weight="700" fill="#7c2d12">① 相向：L、R 从两端向中间靠拢（依赖有序性）</text>
+                    <rect x="18" y="26" width="36" height="26" rx="5" fill="#f97316" stroke="#c2410c"></rect>
+                    <rect x="58" y="26" width="36" height="26" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="98" y="26" width="36" height="26" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="138" y="26" width="36" height="26" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="178" y="26" width="36" height="26" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="218" y="26" width="36" height="26" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="258" y="26" width="36" height="26" rx="5" fill="#f97316" stroke="#c2410c"></rect>
+                    <text x="36" y="44" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">L</text>
+                    <text x="276" y="44" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">R</text>
+                    <text x="100" y="44" font-size="12" fill="#ea580c">→</text>
+                    <text x="228" y="44" font-size="12" fill="#ea580c">←</text>
+                    <text x="14" y="78" font-size="12" font-weight="700" fill="#7c2d12">② 同向：S 标记写入位，F 向前扫描（原地去重/分类）</text>
+                    <rect x="18" y="88" width="36" height="26" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="58" y="88" width="36" height="26" rx="5" fill="#dbeafe" stroke="#3b82f6"></rect>
+                    <rect x="98" y="88" width="36" height="26" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="138" y="88" width="36" height="26" rx="5" fill="#fee2e2" stroke="#ef4444"></rect>
+                    <rect x="178" y="88" width="36" height="26" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="218" y="88" width="36" height="26" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <text x="76" y="106" text-anchor="middle" font-size="12" fill="#1d4ed8" font-weight="700">S</text>
+                    <text x="156" y="106" text-anchor="middle" font-size="12" fill="#b91c1c" font-weight="700">F</text>
+                    <text x="14" y="140" font-size="12" font-weight="700" fill="#7c2d12">③ 快慢：fast 步长 2、slow 步长 1（有环必相遇）</text>
+                    <rect x="18" y="150" width="36" height="26" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="58" y="150" width="36" height="26" rx="5" fill="#dbeafe" stroke="#3b82f6"></rect>
+                    <rect x="98" y="150" width="36" height="26" rx="5" fill="#fee2e2" stroke="#ef4444"></rect>
+                    <rect x="138" y="150" width="36" height="26" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="178" y="150" width="36" height="26" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <text x="76" y="168" text-anchor="middle" font-size="12" fill="#1d4ed8" font-weight="700">S</text>
+                    <text x="116" y="168" text-anchor="middle" font-size="12" fill="#b91c1c" font-weight="700">F</text>
+                    <text x="14" y="200" font-size="10.5" fill="#64748b">同一组数组，三种运动方式对应三类问题；图中下标与取值均为教学示意。</text>
+                </g>
+            </svg>
+            <figcaption>双指针的三张“基本图纸”。<strong>相向</strong>靠的是有序性：两端之和小于目标就右移 L、大于目标就左移 R，每次都能确定排除一个端点（167/15/11）。<strong>同向</strong>里 S 左侧是已处理好的部分、F 负责扫描未知区域，交换后 S 右移即可原地去重（26/283）。<strong>快慢</strong>用步长差制造“追及”，fast 每步比 slow 多走 1 格，一旦入环两者距离每轮缩短 1，最多环长步内必然相遇（141/142/287）。</figcaption>
+        </figure>
+
+        <h2 id="opposite">相向指针（左右夹逼）</h2>
 
         <p>相向指针是最直观的双指针模式。通常的做法是：<strong>先排序，然后用两个指针从左右两端向中间遍历</strong>。</p>
 
@@ -134,7 +203,17 @@
             <strong>直观解释：</strong>为什么只移动较矮的那一侧？因为面积取决于短板。移动较高的一侧，瓶颈仍然是较矮的那根，而且宽度还在缩小——面积不可能变大。移动较矮的一侧才有机会遇到更高的线。这个<strong>"短板决定论"</strong>也适用于很多优化问题。
         </div>
 
-        <h2>同向指针</h2>
+        <div class="demo" id="demo-container">
+            <p><strong>单步演示：</strong>在 height = [1, 8, 6, 2, 5, 4, 8, 3, 7] 上逐步求最大盛水量，观察每轮到底移动哪一侧。</p>
+            <div class="demo-controls" role="group" aria-label="盛水容器双指针演示控制">
+                <button type="button" id="tp-prev">上一步</button>
+                <button type="button" id="tp-next">下一步</button>
+                <button type="button" id="tp-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="tp-out" role="status" aria-live="polite"></pre>
+        </div>
+
+        <h2 id="same">同向指针</h2>
 
         <p>同向指针的两个指针从同一起点出发，一快一慢，快指针负责"探索"，慢指针负责"标记"。这种模式最常用于<strong>数组原地去重</strong>和<strong>元素分类</strong>。</p>
 
@@ -167,7 +246,7 @@
 
         <p>注意题目要求原地修改，不返回新数组。这段代码简洁到只有 5 行——但它清楚地展示了同向指针的精髓：<strong>slow 指针左边是已经处理好的部分，fast 指针负责扫描未知区域</strong>。</p>
 
-        <h2>快慢指针</h2>
+        <h2 id="fastslow">快慢指针</h2>
 
         <p>快慢指针在上一章的链表中已经讲过了。这里再补充一道非链表场景的经典题——用快慢指针的思维来解决数组问题。</p>
 
@@ -199,7 +278,7 @@
             <strong>注意陷阱：</strong>287 的限制非常严格——不能修改原数组（排除了排序和原地哈希），只能用 O(1) 额外空间（排除了 HashSet）。这迫使你想到"链表环检测"这个看似不相关的模型。如果你在面试中遇到限制很多的题目，试着想想能否把数组索引映射成指针。
         </div>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <p>双指针的坑大多集中在<strong>边界条件</strong>和<strong>指针移动时机</strong>上。</p>
 
@@ -261,13 +340,70 @@ else:
 
         <p>双指针是一个用"空间"（多一个指针）换"时间"（少一层循环）的技巧。它的应用范围极广——下一章的<strong>二分查找</strong>本质上就是一种特殊的相向指针（left 和 right 在缩小搜索范围），而再下一章的<strong>滑动窗口</strong>其实就是同向指针的进阶版。我们下一章见！</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>用法</th><th>出处（题目号）</th><th>前提 / 例外</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>相向夹逼 O(n)、O(1)</td><td>167 两数之和 II：数组按非递减顺序排列</td><td>数组必须已排序；无序时先排序会变成 O(n log n)（15 即如此）</td></tr>
+                    <tr><td>三数之和 O(n²)</td><td>15 三数之和</td><td>需两层去重：外层固定值去重 + 内层双指针去重，否则结果重复</td></tr>
+                    <tr><td>盛水容器 O(n)、O(1)</td><td>11 盛最多水的容器</td><td>面积 = min(左高, 右高) × 宽度；只能排除较短的一侧</td></tr>
+                    <tr><td>同向指针 O(n)、O(1)</td><td>26 删除有序数组中的重复项</td><td>要求原地修改、返回新长度；数组有序时单个 slow 足够</td></tr>
+                    <tr><td>同向指针 O(n)、O(1)</td><td>283 移动零</td><td>需保持非零元素的相对顺序；原地交换即可</td></tr>
+                    <tr><td>快慢指针 O(n)、O(1)</td><td>287 寻找重复数</td><td>不得修改数组且只能用 O(1) 额外空间；把下标→值看作链表指针</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>演示中的 height 数组与推演数据均为<strong>教学示意</strong>，用于观察指针移动，不代表某道题的官方测试用例。</li>
+            <li>O(n²) 是三数之和（15）的结论；两数之和 II（167）因为有有序前提才能做到 O(n)。把两者混为一谈是常见错误。</li>
+            <li>本章不覆盖“滑动窗口”与“青蛙过河”等双指针变形；滑动窗口是同向指针的进阶形式，将在第 6 章展开。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="03.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
             <a href="05.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var h = [1, 8, 6, 2, 5, 4, 8, 3, 7];
+    var states = [];
+    var left = 0, right = h.length - 1, best = 0;
+    states.push({ l: left, r: right, msg: '初始：left = 0，right = ' + right + '，best = 0。' });
+    while (left < right) {
+        var area = Math.min(h[left], h[right]) * (right - left);
+        var newBest = Math.max(best, area);
+        var msg = '宽度 = ' + right + ' − ' + left + ' = ' + (right - left)
+            + '，短板高 = min(' + h[left] + ', ' + h[right] + ') = ' + Math.min(h[left], h[right])
+            + ' → 面积 = ' + area + '；更新后 best = ' + newBest + '。';
+        best = newBest;
+        if (h[left] < h[right]) { msg += ' 较短的是 left 侧 → left++。'; left++; }
+        else { msg += ' 较短的是 right 侧（或等高）→ right--。'; right--; }
+        states.push({ l: left, r: right, msg: msg });
+    }
+    states.push({ l: left, r: right, msg: 'left == right，循环结束。最大盛水量 = ' + best + '。' });
+
+    var pos = 0;
+    var out = document.getElementById('tp-out');
+    function render() {
+        var s = states[pos];
+        out.textContent = s.msg + '\n当前区间 [left, right] = [' + s.l + ', ' + s.r + ']'
+            + '，区间宽度 ' + Math.max(0, s.r - s.l) + '\n进度 ' + (pos + 1) + '/' + states.length;
+    }
+    document.getElementById('tp-next').addEventListener('click', function () { if (pos < states.length - 1) { pos++; render(); } });
+    document.getElementById('tp-prev').addEventListener('click', function () { if (pos > 0) { pos--; render(); } });
+    document.getElementById('tp-reset').addEventListener('click', function () { pos = 0; render(); });
+    render();
+})();
+</script>
 </body>
 </html>
