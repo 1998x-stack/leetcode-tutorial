@@ -5,11 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第7章 前缀和与差分</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端的布局兜底：不依赖外部样式表也能不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x, .eq-scroll, [data-math-scroll] { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+        .eq-scroll { display: block; }
+    </style>
 </head>
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>💻 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 数组与哈希表</a></li>
@@ -41,10 +57,25 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>前缀和思想</h2>
+        <h1>前缀和与差分：把区间操作变成端点操作</h1>
+        <p class="lede">前缀和与差分是一对互逆技巧：<strong>前缀和把“区间求和”变成一次减法，差分把“区间加减”变成两次端点修改</strong>。本章先说清它们互为逆运算的关系，再分别落到一维、二维以及“边遍历边查”的哈希化写法上。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#essence">前缀和思想</a></li>
+                <li><a href="#oneprefix">一维前缀和</a></li>
+                <li><a href="#twoprefix">二维前缀和</a></li>
+                <li><a href="#diff">差分数组</a></li>
+                <li><a href="#pitfalls">踩坑与总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="essence">前缀和思想</h2>
 
         <p>大家好，我是你们的讲师。今天我们来聊一个精巧而实用的技巧——<strong>前缀和（Prefix Sum）与差分（Difference Array）</strong>。前缀和的核心思想非常朴素：<strong>预处理出一个前缀和数组，然后用 O(1) 时间回答任意区间和查询</strong>。这是"空间换时间"的又一个经典案例。</p>
 
@@ -56,7 +87,59 @@
             <strong>核心关系：</strong>前缀和与差分互为逆运算。前缀和 = 差分的前缀和 = 原数组；差分 = 原数组的差分。理解了这个互逆关系，你就掌握了这对技巧的精髓。
         </div>
 
-        <h2>一维前缀和</h2>
+        <figure id="fig-prefix-diff">
+            <svg viewBox="0 0 360 250" role="img" aria-label="前缀和查询与差分端点修改的对照示意图">
+                <title>前缀和用两个前缀相减得到区间和；差分用两个端点修改实现区间加减</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="14" y="15" font-size="12" font-weight="700" fill="#7c2d12">① 前缀和：区间 [l, r) 的和 = prefix[r] − prefix[l]</text>
+                    <text x="14" y="40" font-size="10" fill="#94a3b8">arr</text>
+                    <rect x="40" y="28" width="34" height="24" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <rect x="78" y="28" width="34" height="24" rx="5" fill="#dbeafe" stroke="#3b82f6"></rect>
+                    <rect x="116" y="28" width="34" height="24" rx="5" fill="#dbeafe" stroke="#3b82f6"></rect>
+                    <rect x="154" y="28" width="34" height="24" rx="5" fill="#dbeafe" stroke="#3b82f6"></rect>
+                    <rect x="192" y="28" width="34" height="24" rx="5" fill="#ffedd5" stroke="#f97316"></rect>
+                    <text x="57" y="45" text-anchor="middle" font-size="12" fill="#7c2d12">3</text>
+                    <text x="95" y="45" text-anchor="middle" font-size="12" fill="#1d4ed8">1</text>
+                    <text x="133" y="45" text-anchor="middle" font-size="12" fill="#1d4ed8">2</text>
+                    <text x="171" y="45" text-anchor="middle" font-size="12" fill="#1d4ed8">5</text>
+                    <text x="209" y="45" text-anchor="middle" font-size="12" fill="#7c2d12">4</text>
+                    <text x="14" y="80" font-size="10" fill="#94a3b8">prefix</text>
+                    <rect x="40" y="68" width="34" height="24" rx="5" fill="#fff7ed" stroke="#fdba74"></rect>
+                    <rect x="78" y="68" width="34" height="24" rx="5" fill="#f97316" stroke="#c2410c"></rect>
+                    <rect x="116" y="68" width="34" height="24" rx="5" fill="#fff7ed" stroke="#fdba74"></rect>
+                    <rect x="154" y="68" width="34" height="24" rx="5" fill="#fff7ed" stroke="#fdba74"></rect>
+                    <rect x="192" y="68" width="34" height="24" rx="5" fill="#f97316" stroke="#c2410c"></rect>
+                    <rect x="230" y="68" width="34" height="24" rx="5" fill="#fff7ed" stroke="#fdba74"></rect>
+                    <text x="57" y="85" text-anchor="middle" font-size="12" fill="#9a3412">0</text>
+                    <text x="95" y="85" text-anchor="middle" font-size="12" fill="#fff">3</text>
+                    <text x="133" y="85" text-anchor="middle" font-size="12" fill="#9a3412">4</text>
+                    <text x="171" y="85" text-anchor="middle" font-size="12" fill="#9a3412">6</text>
+                    <text x="209" y="85" text-anchor="middle" font-size="12" fill="#fff">11</text>
+                    <text x="247" y="85" text-anchor="middle" font-size="12" fill="#9a3412">15</text>
+                    <text x="14" y="115" font-size="11" fill="#475569">问 l=1, r=4：prefix[4] − prefix[1] = 11 − 3 = 8 = 1+2+5</text>
+                    <text x="14" y="143" font-size="12" font-weight="700" fill="#7c2d12">② 差分：区间 [1, 3] 加 2，只需改两个端点</text>
+                    <text x="14" y="168" font-size="10" fill="#94a3b8">diff</text>
+                    <rect x="40" y="156" width="34" height="24" rx="5" fill="#fff7ed" stroke="#fdba74"></rect>
+                    <rect x="78" y="156" width="34" height="24" rx="5" fill="#fee2e2" stroke="#ef4444"></rect>
+                    <rect x="116" y="156" width="34" height="24" rx="5" fill="#fff7ed" stroke="#fdba74"></rect>
+                    <rect x="154" y="156" width="34" height="24" rx="5" fill="#fff7ed" stroke="#fdba74"></rect>
+                    <rect x="192" y="156" width="34" height="24" rx="5" fill="#dbeafe" stroke="#3b82f6"></rect>
+                    <rect x="230" y="156" width="34" height="24" rx="5" fill="#fff7ed" stroke="#fdba74"></rect>
+                    <text x="57" y="173" text-anchor="middle" font-size="12" fill="#9a3412">0</text>
+                    <text x="95" y="173" text-anchor="middle" font-size="12" fill="#b91c1c">+2</text>
+                    <text x="133" y="173" text-anchor="middle" font-size="12" fill="#9a3412">0</text>
+                    <text x="171" y="173" text-anchor="middle" font-size="12" fill="#9a3412">0</text>
+                    <text x="209" y="173" text-anchor="middle" font-size="12" fill="#1d4ed8">−2</text>
+                    <text x="247" y="173" text-anchor="middle" font-size="12" fill="#9a3412">0</text>
+                    <text x="14" y="205" font-size="11" fill="#475569">diff[1] += 2（起点）；diff[4] −= 2（终点 + 1）</text>
+                    <text x="14" y="228" font-size="11" fill="#475569">对 diff 求前缀和 → 原数组在 [1,3] 区间上整体抬高 2</text>
+                    <text x="14" y="246" font-size="10" fill="#64748b">图中数组为教学示意，用来说明减法与端点修改的位置关系。</text>
+                </g>
+            </svg>
+            <figcaption>把两种技巧放在一起看，关系一目了然：<strong>前缀和</strong>在 arr 上方建一条“累加阶梯”，任意区间和就是阶梯上两个台阶的高度差（图中 11 − 3 = 8）；<strong>差分</strong>则在 diff 上只记录“变化量”，区间加 2 等价于起点 +2、终点后一位 −2，求前缀和后这段变化就平均落到区间内每个元素上。两者互为逆运算：对差分求前缀和得到原数组，对原数组求差分得到差分数组。</figcaption>
+        </figure>
+
+        <h2 id="oneprefix">一维前缀和</h2>
 
         <h3>区域和检索 — 数组不可变（LeetCode 303）</h3>
 
@@ -101,7 +184,17 @@
             <strong>注意陷阱：</strong>560 是"子数组求和"而不是"子数组最大/最小"——不能用滑动窗口！因为数组包含负数，窗口的单调性不成立。很多人在 560 上尝试滑动窗口然后 WA，这是典型的"pattern 误用"。
         </div>
 
-        <h2>二维前缀和</h2>
+        <div class="demo" id="demo-subarray-sum">
+            <p><strong>单步演示（LeetCode 560）：</strong>在 nums = [1, 1, 1]、k = 2 上边遍历边查前缀和哈希表，看 count 怎么累加。</p>
+            <div class="demo-controls" role="group" aria-label="和为 K 的子数组演示控制">
+                <button type="button" id="ps-prev">上一步</button>
+                <button type="button" id="ps-next">下一步</button>
+                <button type="button" id="ps-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="ps-out" role="status" aria-live="polite"></pre>
+        </div>
+
+        <h2 id="twoprefix">二维前缀和</h2>
 
         <h3>二维区域和检索（LeetCode 304）</h3>
 
@@ -166,10 +259,10 @@
         <p>这里要注意边界 <code>max(0, i-k)</code> 和 <code>min(m-1, i+k)</code> 的处理——不能超出矩阵范围。二维前缀和的灵活之处就在于这些边界细节。</p>
 
         <div class="tip">
-            <strong>记忆方法：</strong>二维前缀和的公式记不住？画个 <code>2×2</code 的格子，标上加减号，看一次就记住了。或者记住口诀："加右加下减对角"（预处理），"减左减上加左上"（查询）。
+            <strong>记忆方法：</strong>二维前缀和的公式记不住？画个 <code>2×2</code> 的格子，标上加减号，看一次就记住了。或者记住口诀："加右加下减对角"（预处理），"减左减上加左上"（查询）。
         </div>
 
-        <h2>差分数组</h2>
+        <h2 id="diff">差分数组</h2>
 
         <p>前缀和适合"频繁查询区间和"的场景，而<strong>差分数组（Difference Array）</strong>适合"频繁进行区间增减、最后一次性查询"的场景。差分数组就是原数组的"导数"——对差分数组求前缀和就能还原原数组。</p>
 
@@ -195,7 +288,7 @@
 
         <p>类似的题目还有：<strong>拼车（LeetCode 1094）</strong>——在 [i, j) 区间内载客，求是否超载。完全可以用差分数组统计每个位置的乘客数，然后检查有没有超过 capacity 的地方。</p>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <p>前缀和的坑集中在<strong>前缀和哈希化</strong>的边界条件上。我最惨的一次踩坑是在 LeetCode 560 上——我忘写了 <code>prefix_map = {0: 1}</code>，结果第一个元素就等于 k 的情况永远统计不到。</p>
 
@@ -253,13 +346,74 @@
 
         <p>前缀和与差分是"计算密集型"场景的基础工具。从下一章开始，我们将进入<strong>二叉树与递归</strong>的世界——这是数据结构从"线性"走向"非线性"的转折点。树结构的递归本质会让你的思维模式发生一次质的飞跃。我们下一章见！</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>技巧</th><th>出处（题目号）</th><th>前提 / 例外</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>一维前缀和 O(1) 查询</td><td>303 区域和检索—数组不可变</td><td>数组不可变；若带修改则退化为 O(n)</td></tr>
+                    <tr><td>前缀和 + HashMap O(n)</td><td>560 和为 K 的子数组：数组可能含负数</td><td>含负数时单调性不成立，<strong>不能用滑动窗口</strong>；需前置 {0:1}</td></tr>
+                    <tr><td>二维前缀和 O(1) 查询</td><td>304 二维区域和检索—矩阵不可变</td><td>用容斥：加右下、减左、减上、加回左上</td></tr>
+                    <tr><td>二维前缀和 + 边界裁剪</td><td>1314 矩阵区域和</td><td>需把行列下标夹在 [0, m-1] / [0, n-1] 内</td></tr>
+                    <tr><td>差分数组区间加减 O(1)</td><td>1109 航班预订统计</td><td>差分数组需多开一格，防 diff[j+1] 越界；下标从 1 开始</td></tr>
+                    <tr><td>差分数组判容量</td><td>1094 拼车</td><td>区间形式为 [i, j)，下车点不减人</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>演示中的 nums = [1, 1, 1]、k = 2 及图中数组均为<strong>教学示意</strong>，用来说明哈希累加过程，不是某道题的官方测试用例。</li>
+            <li>“预处理 O(n) / 查询 O(1)”只适用于<strong>静态</strong>数组。若数组会被单点修改，前缀和需要重新 O(n) 预处理；此时应改用树状数组或线段树（第 22 章）。</li>
+            <li>本章不覆盖带模数的哈希前缀和（如 974）、也不展开二维差分；它们都是同一套端点操作在多维/取模上的推广。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="06.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
             <a href="08.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var nums = [1, 1, 1], k = 2;
+    var states = [];
+    var map = { 0: 1 };
+    var sum = 0, count = 0;
+    function mapStr(m) {
+        return Object.keys(m).map(function (key) { return key + ':' + m[key]; }).join(', ');
+    }
+    states.push({ sum: sum, count: count, map: mapStr(map), msg: '初始化：prefix_sum = 0，map = {0:1}（空前缀和），count = 0。' });
+    for (var i = 0; i < nums.length; i++) {
+        sum += nums[i];
+        var need = sum - k;
+        var add = map[need] || 0;
+        count += add;
+        var msg = 'i = ' + i + '：prefix_sum = ' + sum + '；need = ' + sum + ' − ' + k + ' = ' + need
+            + '，map[' + need + '] = ' + add + ' → count = ' + count + '。';
+        map[sum] = (map[sum] || 0) + 1;
+        states.push({ sum: sum, count: count, map: mapStr(map), msg: msg + ' 记录前缀和 ' + sum + ' 后计数 +1。' });
+    }
+    states.push({ sum: sum, count: count, map: mapStr(map), msg: '遍历结束，和为 ' + k + ' 的子数组个数 = ' + count + '。' });
+
+    var pos = 0;
+    var out = document.getElementById('ps-out');
+    function render() {
+        var s = states[pos];
+        out.textContent = s.msg + '\n当前 prefix_sum = ' + s.sum + '，count = ' + s.count
+            + '\n哈希表 { 前缀和 : 次数 } = { ' + s.map + ' }'
+            + '\n进度 ' + (pos + 1) + '/' + states.length;
+    }
+    document.getElementById('ps-next').addEventListener('click', function () { if (pos < states.length - 1) { pos++; render(); } });
+    document.getElementById('ps-prev').addEventListener('click', function () { if (pos > 0) { pos--; render(); } });
+    document.getElementById('ps-reset').addEventListener('click', function () { pos = 0; render(); });
+    render();
+})();
+</script>
 </body>
 </html>
