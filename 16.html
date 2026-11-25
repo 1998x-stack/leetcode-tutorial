@@ -5,11 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第16章 拓扑排序与并查集</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端的布局兜底：不依赖外部样式表也能不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x, .eq-scroll, [data-math-scroll] { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>💻 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 数组与哈希表</a></li>
@@ -41,16 +56,32 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>从依赖关系到连通分量</h2>
+        <h1>拓扑排序与并查集：依赖关系与连通关系的两把钥匙</h1>
+        <p class="lede">上一章掌握了图的遍历，本章解决两类“关系”问题：<strong>拓扑排序</strong>处理有向依赖（谁必须先于谁），<strong>并查集</strong>处理无向连通（谁和谁在一组）。两者都只有两个核心动作——前者是“入度 + 队列”，后者是“find + union”，但衍生出的应用极广。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#intro">从依赖关系到连通分量</a></li>
+                <li><a href="#topo">拓扑排序：入度表 + BFS</a></li>
+                <li><a href="#dsu">并查集基础：find + union</a></li>
+                <li><a href="#weighted">并查集进阶：带权并查集</a></li>
+                <li><a href="#compare">对比总结</a></li>
+                <li><a href="#pitfalls">踩坑与总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="intro">从依赖关系到连通分量</h2>
 
         <p>各位同学好。上一章我们掌握了图的 DFS/BFS 遍历，现在我们来解决两个图论中"最有实际意义"的问题：<strong>拓扑排序</strong>和<strong>并查集</strong>。为什么说它们最有实际意义？拓扑排序解决的是"依赖关系"问题——大学课程安排、软件构建顺序、任务调度，本质上都是 DAG（有向无环图）上的拓扑排序。而并查集解决的是"连通关系"问题——社交网络中的朋友圈、计算机网络中的节点连通、地图上的区域划分。</p>
 
         <p>这两个算法有一个共同点：<strong>思想极其简单，但应用极其广泛</strong>。拓扑排序的核心就两个东西——"入度"和"队列"；并查集的核心就两个操作——"find"和"union"。但正是这两个简单的算法，能派生出无数高级应用。本章我们来把它们吃透。</p>
 
-        <h2>拓扑排序：入度表 + BFS</h2>
+        <h2 id="topo">拓扑排序：入度表 + BFS</h2>
 
         <p>拓扑排序（Topological Sorting）是对 DAG 的所有顶点的一种线性排序，使得对每条有向边 <code>u → v</code>，u 在排序中都出现在 v 之前。用人话说就是：<strong>"先修课"必须先于"后续课"出现</strong>。</p>
 
@@ -162,7 +193,47 @@
             <strong>外星词典的陷阱：</strong>当 w1 是 w2 的前缀但 w1 比 w2 长时（如 <code>["abc", "ab"]</code>），排序是矛盾的，应直接返回空字符串。这个边界条件非常容易被忽略——我第一次做这题时就漏了，LeetCode 直接 WA。
         </div>
 
-        <h2>并查集基础：find + union</h2>
+        <figure id="fig-kahn">
+            <svg viewBox="0 0 360 208" role="img" aria-label="Kahn 拓扑排序在一个 5 节点 DAG 上的入度与出队过程示意">
+                <title>Kahn 算法：每次把入度为 0 的节点出队，并把它的邻居入度减 1</title>
+                <defs>
+                    <marker id="ah" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+                        <path d="M0,0 L6,3 L0,6 z" fill="#475569"></path>
+                    </marker>
+                </defs>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="14" y="14" font-size="12" font-weight="700" fill="#7c2d12">DAG 示例：节点内数字为当前入度</text>
+                    <g stroke="#475569" stroke-width="1.6" marker-end="url(#ah)">
+                        <line x1="60" y1="76" x2="132" y2="53"></line>
+                        <line x1="60" y1="88" x2="132" y2="111"></line>
+                        <line x1="166" y1="53" x2="232" y2="75"></line>
+                        <line x1="166" y1="111" x2="232" y2="89"></line>
+                        <line x1="268" y1="82" x2="316" y2="82"></line>
+                    </g>
+                    <g stroke="#c2410c" stroke-width="2">
+                        <circle cx="44" cy="82" r="18" fill="#f97316"></circle>
+                        <circle cx="150" cy="46" r="18" fill="#ffedd5"></circle>
+                        <circle cx="150" cy="118" r="18" fill="#ffedd5"></circle>
+                        <circle cx="250" cy="82" r="18" fill="#ffedd5"></circle>
+                        <circle cx="334" cy="82" r="18" fill="#ffedd5"></circle>
+                    </g>
+                    <g font-size="13" text-anchor="middle">
+                        <text x="44" y="87" fill="#fff" font-weight="700">0</text>
+                        <text x="150" y="51" fill="#9a3412" font-weight="700">1</text>
+                        <text x="150" y="123" fill="#9a3412" font-weight="700">1</text>
+                        <text x="250" y="87" fill="#9a3412" font-weight="700">2</text>
+                        <text x="334" y="87" fill="#9a3412" font-weight="700">1</text>
+                    </g>
+                    <text x="14" y="152" font-size="11" fill="#475569">① 入度为 0 的节点入队：queue = [0]</text>
+                    <text x="14" y="172" font-size="11" fill="#475569">② 出队 0 → order = [0]；邻居 1、2 入度减为 0 并入队</text>
+                    <text x="14" y="192" font-size="11" fill="#475569">③ 依次出队 1、2、3、4 → order = [0,1,2,3,4]，长度 = n → 无环</text>
+                    <text x="14" y="205" font-size="9.5" fill="#64748b">节点编号、入度均为教学示意。</text>
+                </g>
+            </svg>
+            <figcaption>Kahn 算法的一次完整运行。关键不变量是：<strong>队列里始终只放入度为 0 的节点</strong>，而出队顺序就是一种合法的拓扑序。橙色节点 0 是起点（入度 0）；它一旦出队，就把所有出边的终点入度减 1，于是 1 和 2 变成新的入度 0 节点。如果最终 <code>order</code> 的长度小于节点总数，说明剩下的节点互相依赖成环（环上每个节点入度都不为 0）——这就是拓扑排序附带的<strong>有向图环检测</strong>。</figcaption>
+        </figure>
+
+        <h2 id="dsu">并查集基础：find + union</h2>
 
         <p>并查集（Union-Find / Disjoint Set Union, DSU）解决的核心问题是<strong>动态连通性</strong>——支持两个操作：查询两个元素是否属于同一集合（find），以及合并两个元素所在的集合（union）。</p>
 
@@ -260,7 +331,17 @@
             <strong>DFS 也能做：</strong>省份数量用 DFS 遍历连通分量也能解，但并查集写起来更干净，而且可以动态地加边——DFS 每次都要重新遍历整个图。如果题目涉及"多次连接查询"，并查集是更好的选择。
         </div>
 
-        <h2>并查集进阶：带权并查集</h2>
+        <div class="demo" id="demo-uf">
+            <p><strong>单步演示（冗余连接，684）：</strong>按顺序处理边 [[1,2], [1,3], [2,3]]，看并查集在哪里发现多余的边。</p>
+            <div class="demo-controls" role="group" aria-label="并查集演示控制">
+                <button type="button" id="uf-prev">上一步</button>
+                <button type="button" id="uf-next">下一步</button>
+                <button type="button" id="uf-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="uf-out" role="status" aria-live="polite"></pre>
+        </div>
+
+        <h2 id="weighted">并查集进阶：带权并查集</h2>
 
         <p>基础并查集只能维护"连通性"——两个节点在不在一个集合里。但有些问题需要维护<strong>节点之间的相对关系</strong>，比如"A 和 B 是同一类"或者"A 和 C 不是同一类"。这时就需要<strong>带权并查集</strong>，在合并时额外维护一个"权值"。</p>
 
@@ -294,7 +375,7 @@
 
         <p>带权并查集的更高级应用还包括：食物链问题（POJ 1182）、情侣牵手（LeetCode 765）等。核心思想不变：<strong>在 union 和 find 时额外维护一个"到根节点的偏移量"</strong>，用于表示节点与根的关系。</p>
 
-        <h2>对比总结：拓扑排序 vs 并查集</h2>
+        <h2 id="compare">对比总结：拓扑排序 vs 并查集</h2>
 
         <p>这两个算法虽然都处理"关系"，但视角完全不同：</p>
 
@@ -340,7 +421,7 @@
             </tbody>
         </table>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <h3>坑1：并查集未路径压缩导致超时</h3>
 
@@ -360,13 +441,74 @@
 
         <p>到此为止，我们完成了拓扑排序和并查集的系统学习。下一章我们将进入图论中另一个高频考点——<strong>最短路径与最小生成树</strong>。Dijkstra、Floyd、Kruskal、Prim——这些算法名字可能听起来吓人，但它们各自的套路非常清晰。我们下一章见！</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>知识点</th><th>出处（题目号）</th><th>核心操作</th><th>说明</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>拓扑排序 + 环检测</td><td>207 课程表</td><td>入度表 + 队列</td><td>order 长度 &lt; n 即有环</td></tr>
+                    <tr><td>输出拓扑序</td><td>210 课程表 II</td><td>同 207，返回 order</td><td>有多个合法解时返回任意一个</td></tr>
+                    <tr><td>偏序提取 + 拓扑排序</td><td>269 外星词典</td><td>相邻单词首个不同字母建边</td><td>需处理“前缀却更长”的矛盾输入</td></tr>
+                    <tr><td>并查集检测无向环</td><td>684 冗余连接</td><td>find + union</td><td>两端已同根则当前边冗余</td></tr>
+                    <tr><td>连通分量计数</td><td>547 省份数量</td><td>union 后数不同根</td><td>DFS 也能做，并查集可动态加边</td></tr>
+                    <tr><td>等价关系判定</td><td>990 等式方程的可满足性</td><td>先合并 == 再校验 !=</td><td>两遍扫描，避免漏掉间接矛盾</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>演示中的边集 [[1,2], [1,3], [2,3]]、图节点与入度均为<strong>教学示意</strong>，用来说明出队与合并过程，不代表某道题的官方测试用例。</li>
+            <li>“单次操作近乎 O(1)”的 O(α(n)) 是<strong>均摊</strong>结论，前提是<strong>同时</strong>使用路径压缩与按秩（或按大小）合并；只用其中一个时上界更强。</li>
+            <li>拓扑排序除了 Kahn（BFS）还有 DFS 后序写法；两者都正确，但 DFS 版本需要额外的三色标记才能报告环的具体位置。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="15.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
             <a href="17.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var edges = [[1, 2], [1, 3], [2, 3]];
+    var parent = [0, 1, 2, 3];
+    var states = [];
+    function snap(msg) { states.push({ p: parent.slice(), msg: msg }); }
+    function find(x) {
+        while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; }
+        return x;
+    }
+    snap('初始化：parent = [0, 1, 2, 3]，节点 1..3 各自成集。');
+    for (var i = 0; i < edges.length; i++) {
+        var u = edges[i][0], v = edges[i][1];
+        var ru = find(u), rv = find(v);
+        if (ru === rv) {
+            snap('边 (' + u + ', ' + v + ')：find(' + u + ') = find(' + v + ') = ' + ru + '，两端已同根 → 这条边冗余，返回 [' + u + ', ' + v + ']。');
+        } else {
+            parent[rv] = ru;
+            snap('边 (' + u + ', ' + v + ')：find(' + u + ') = ' + ru + '，find(' + v + ') = ' + rv + '，不同根 → 合并，parent[' + rv + '] = ' + ru + '。');
+        }
+    }
+    var pos = 0;
+    var out = document.getElementById('uf-out');
+    function render() {
+        var s = states[pos];
+        out.textContent = s.msg + '\n当前 parent = [' + s.p.join(', ') + ']'
+            + '\n  节点 : ' + s.p.map(function (_, i) { return i; }).join('  ')
+            + '\n  父节点 : ' + s.p.join('  ')
+            + '\n进度 ' + (pos + 1) + '/' + states.length;
+    }
+    document.getElementById('uf-next').addEventListener('click', function () { if (pos < states.length - 1) { pos++; render(); } });
+    document.getElementById('uf-prev').addEventListener('click', function () { if (pos > 0) { pos--; render(); } });
+    document.getElementById('uf-reset').addEventListener('click', function () { pos = 0; render(); });
+    render();
+})();
+</script>
 </body>
 </html>
