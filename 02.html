@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第2章 链表操作</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端兜底：不依赖外部样式表也不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
@@ -41,10 +56,25 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>链表的本质与分类</h2>
+        <h1>链表操作：指针重排的基本功</h1>
+        <p class="lede">链表题不考复杂算法，只考<strong>指针操作是否严谨</strong>。本章把链表题归约为“指针重排”：先用虚拟头节点抹平头尾边界，再用快慢指针提取位置信息，最后把分组反转、重排等难合题拆成基础动作的组合。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#basics">链表的本质与分类</a></li>
+                <li><a href="#dummy">虚拟头节点技巧</a></li>
+                <li><a href="#twoptr">快慢指针与环检测</a></li>
+                <li><a href="#complex">复杂链表操作</a></li>
+                <li><a href="#pitfalls">踩坑与总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="basics">链表的本质与分类</h2>
 
         <p>大家好，我是你们的讲师。今天我们来攻克 LeetCode 面试中的"守门员"——链表操作。为什么说它是守门员？因为链表题考的不是复杂的算法，而是<strong>最基础、最朴素的指针操作能力</strong>。很多候选人做 Medium 动态规划题行云流水，但一到链表反转就手忙脚乱、指针乱飞。面试官正是用这类题来判断你的代码基本功是否扎实。</p>
 
@@ -61,7 +91,7 @@
             <strong>核心思维：</strong>链表操作 = 指针重排。每次操作前，先问自己三个问题：① 哪些指针会丢失？② 是否需要临时保存？③ 修改顺序是什么？
         </div>
 
-        <h2>虚拟头节点技巧</h2>
+        <h2 id="dummy">虚拟头节点技巧</h2>
 
         <p>在链表操作中，最令人头疼的往往不是逻辑本身，而是<strong>边界条件</strong>——当头节点需要被修改时怎么办？虚拟头节点（Dummy Node）就是为此而生的。它让我们<strong>统一对待所有节点</strong>，不需要为头节点写特殊逻辑。</p>
 
@@ -106,7 +136,60 @@
             <strong>经验之谈：</strong>只要涉及"构建新链表"或者"可能会修改头节点"，先用 dummy node。这应该成为你的肌肉记忆。
         </div>
 
-        <h2>快慢指针与环检测</h2>
+        <figure id="fig-reverse">
+            <svg viewBox="0 0 440 250" role="img" aria-label="反转链表的三步指针重排：先存 next，再改 curr.next，最后前移 prev 与 curr">
+                <title>反转链表：保存→反转→前移，三步不可换序</title>
+                <defs>
+                    <marker id="a2" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#0369a1"></path></marker>
+                    <marker id="a2r" markerWidth="7" markerHeight="7" refX="1" refY="3" orient="auto"><path d="M6,0 L0,3 L6,6 z" fill="#dc2626"></path></marker>
+                </defs>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="12" y="18" font-size="11.5" font-weight="700" fill="#7c2d12">反转链表（LC 206）：三个指针的三步舞蹈</text>
+                    <text x="12" y="40" font-size="10.5" fill="#334155">① 初始：prev=None，curr 指向 1，next 暂未保存</text>
+                    <g stroke="#3b82f6" fill="#dbeafe">
+                        <rect x="120" y="48" width="46" height="30" rx="6"></rect>
+                        <rect x="196" y="48" width="46" height="30" rx="6"></rect>
+                        <rect x="272" y="48" width="46" height="30" rx="6"></rect>
+                    </g>
+                    <g font-size="10.5" text-anchor="middle" fill="#1e40af">
+                        <text x="143" y="67">1</text><text x="219" y="67">2</text><text x="295" y="67">3</text>
+                    </g>
+                    <g stroke="#0369a1" stroke-width="1.5" marker-end="url(#a2)">
+                        <line x1="166" y1="63" x2="194" y2="63"></line>
+                        <line x1="242" y1="63" x2="270" y2="63"></line>
+                    </g>
+                    <text x="326" y="67" font-size="10.5" fill="#475569">None</text>
+                    <text x="143" y="94" font-size="10" fill="#7c3aed" text-anchor="middle">curr</text>
+                    <text x="219" y="94" font-size="10" fill="#16a34a" text-anchor="middle">next</text>
+                    <text x="60" y="94" font-size="10" fill="#64748b" text-anchor="middle">prev=None</text>
+
+                    <text x="12" y="128" font-size="10.5" fill="#334155">② 存 next=curr.next；反转 curr.next=prev（原来 1→2 的箭头掉头指向左边）</text>
+                    <g stroke="#dc2626" stroke-width="1.5" marker-end="url(#a2r)">
+                        <line x1="120" y1="152" x2="70" y2="152"></line>
+                    </g>
+                    <text x="46" y="156" font-size="10" fill="#dc2626">None</text>
+                    <g stroke="#3b82f6" fill="#dbeafe">
+                        <rect x="120" y="137" width="46" height="30" rx="6"></rect>
+                        <rect x="196" y="137" width="46" height="30" rx="6"></rect>
+                        <rect x="272" y="137" width="46" height="30" rx="6"></rect>
+                    </g>
+                    <g font-size="10.5" text-anchor="middle" fill="#1e40af">
+                        <text x="143" y="156">1</text><text x="219" y="156">2</text><text x="295" y="156">3</text>
+                    </g>
+                    <g stroke="#0369a1" stroke-width="1.5" marker-end="url(#a2)">
+                        <line x1="242" y1="152" x2="270" y2="152"></line>
+                    </g>
+                    <text x="326" y="156" font-size="10.5" fill="#475569">None</text>
+
+                    <text x="12" y="196" font-size="10.5" fill="#334155">③ 前移：prev=curr（=1），curr=next（=2），回到 ① 处理下一轮</text>
+                    <text x="12" y="222" font-size="10" fill="#475569">逆序遍历中途一旦先写 curr.next 却没有存 next，就会丢掉后续链；向下画图是链表题最好的草稿纸。</text>
+                    <text x="12" y="240" font-size="10" fill="#64748b">图中节点值 1、2、3 为教学示意，用于说明指针顺序。</text>
+                </g>
+            </svg>
+            <figcaption>反转链表的每个循环只有三个动作：<strong>存 next → 改 curr.next → 前移 prev 与 curr</strong>。顺序不可换：先存 next 才能安全改写 curr.next；两个指针前移后才能进入下一轮。“存 next”这一步的存在，正是为了避免<strong>指针丢失</strong>——一旦 <code>curr.next = prev</code> 先于保存，原链表的后续部分就再无引用可达。</figcaption>
+        </figure>
+
+        <h2 id="twoptr">快慢指针与环检测</h2>
 
         <p>快慢指针（Floyd's Algorithm）是链表问题中最优雅的 pattern 之一。它的核心思想是：<strong>两个指针以不同速度遍历链表，利用速度差来检测特定条件</strong>。</p>
 
@@ -156,7 +239,17 @@
                 fast = fast.next.next
             return slow</code></pre>
 
-        <h2>复杂链表操作</h2>
+        <div class="demo" id="demo-floyd">
+            <p><strong>单步演示（环形链表 LC 141）：</strong>链表为 3→2→0→-4，且 -4 的 next 指回下标 1（值 2）形成环。逐步观察 slow（每次 1 步）与 fast（每次 2 步）的位置，理解它们为什么一定相遇。</p>
+            <div class="demo-controls" role="group" aria-label="快慢指针演示控制">
+                <button type="button" id="fl-prev">上一步</button>
+                <button type="button" id="fl-next">下一步</button>
+                <button type="button" id="fl-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="fl-out" role="status" aria-live="polite"></pre>
+        </div>
+
+        <h2 id="complex">复杂链表操作</h2>
 
         <h3>K个一组反转链表（LeetCode 25）</h3>
 
@@ -220,7 +313,7 @@
             <strong>注意：</strong>反转后半段后一定要把 <code>slow.next</code> 置为 None，断开前半段和后半段的连接。如果不做这一步，合并时会出现环形引用，形成死循环。我当初第一次写这道题时就忘了这一步，debug 了半小时才发现是"链表没断开"——这个错误非常隐蔽！
         </div>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <p>链表题的坑大多集中在指针操作上。我来说一个自己的"血泪史"。</p>
 
@@ -277,13 +370,69 @@
 
         <p>链表操作的核心就两件事：<strong>掌握指针重排的顺序，用好 dummy node 简化逻辑</strong>。下一章我们将进入<strong>栈与队列</strong>的世界——这两种结构虽然底层实现简单，但搭配单调栈等技巧后能解决非常多看似复杂的问题。我们下一章见！</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>问题</th><th>出处（题目号）</th><th>核心技巧</th><th>复杂度</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>反转链表</td><td>206 反转链表</td><td>存 next → 改 curr.next → 前移</td><td>时间 O(n)，空间 O(1)</td></tr>
+                    <tr><td>合并有序链表</td><td>21 合并两个有序链表</td><td>虚拟头节点 dummy，接尾</td><td>O(n+m) / O(1)</td></tr>
+                    <tr><td>环检测</td><td>141 环形链表</td><td>快慢指针（步长 1:2）</td><td>O(n) / O(1)</td></tr>
+                    <tr><td>环入口</td><td>142 环形链表 II</td><td>相遇后一指针回起点同速再相遇</td><td>O(n) / O(1)</td></tr>
+                    <tr><td>中点</td><td>876 链表的中间结点</td><td>快指针到底时慢指针在中点</td><td>O(n) / O(1)</td></tr>
+                    <tr><td>分组反转</td><td>25 K 个一组翻转链表</td><td>先数 k 个，反转，再递归/迭代拼接</td><td>O(n) / O(1) 迭代</td></tr>
+                    <tr><td>重排链表</td><td>143 重排链表</td><td>找中点 + 反转后半 + 交叉合并</td><td>O(n) / O(1)</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>复杂度一列描述的是迭代写法；若用递归实现 25 题的分组反转，栈深度为 O(n/k)。</li>
+            <li>图中节点值与演示操作序列均为<strong>教学示意</strong>，只为说明指针顺序，不代表官方测试用例。</li>
+            <li>“快慢指针一定相遇”依赖步长差为 1（1:2）；若改为其他步长比，需重新论证。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="01.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
             <a href="03.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var next = { 0: 1, 1: 2, 2: 3, 3: 1 };
+    var vals = ['3', '2', '0', '-4'];
+    var states = [], slow = 0, fast = 0, guard = 0;
+    states.push({ s: slow, f: fast, msg: '初始：slow 与 fast 都指向 head（下标 0，值 3）。' });
+    while (guard++ < 50) {
+        slow = next[slow];
+        fast = next[next[fast]];
+        if (slow === fast) { states.push({ s: slow, f: fast, msg: 'slow 与 fast 在值 ' + vals[slow] + ' 处相遇 → 链表有环。' }); break; }
+        states.push({ s: slow, f: fast, msg: 'slow 走到值 ' + vals[slow] + '，fast 走到值 ' + vals[fast] + '，尚未相遇。' });
+    }
+    var out = document.getElementById('fl-out');
+    function render(i) {
+        i = Math.max(0, Math.min(i, states.length - 1));
+        var st = states[i], rows = [], k;
+        for (k = 0; k < 4; k++) {
+            var tag = (k === st.s && k === st.f) ? '  ← slow & fast' : (k === st.s ? '  ← slow' : (k === st.f ? '  ← fast' : ''));
+            rows.push('  [' + k + '] 值 ' + vals[k] + tag);
+        }
+        out.textContent = '链：3 → 2 → 0 → -4，且 -4 的 next 指回下标 1\n' + rows.join('\n') + '\n\n第 ' + i + '/' + (states.length - 1) + ' 步：' + st.msg;
+        cur = i;
+    }
+    var cur = 0;
+    render(0);
+    document.getElementById('fl-next').addEventListener('click', function () { render(cur + 1); });
+    document.getElementById('fl-prev').addEventListener('click', function () { render(cur - 1); });
+    document.getElementById('fl-reset').addEventListener('click', function () { render(0); });
+})();
+</script>
 </body>
 </html>
