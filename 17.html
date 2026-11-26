@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第17章 最短路径与最小生成树</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端兜底：不依赖外部样式表也不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
@@ -41,10 +56,26 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>网络中的最优路径与最小代价</h2>
+        <h1>最短路径与最小生成树：两种图上的贪心</h1>
+        <p class="lede">本章的四个算法（Dijkstra、Floyd、Kruskal、Prim）都建立在同一个内核上：<strong>用贪心逐步确定一条边或一个点的最终值</strong>。理解“为什么可以先确定”比背模板更重要——这也正是 Dijkstra 遇到负权边会失效的原因。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#overview">网络中的最优路径与最小代价</a></li>
+                <li><a href="#dijkstra">Dijkstra：堆优化实现</a></li>
+                <li><a href="#floyd">Floyd 算法：多源最短路</a></li>
+                <li><a href="#mst">最小生成树：Kruskal 与 Prim</a></li>
+                <li><a href="#compare">算法对比：选型指南</a></li>
+                <li><a href="#pitfalls">踩坑与总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="overview">网络中的最优路径与最小代价</h2>
 
         <p>同学们好。如果说上一章的拓扑排序和并查集处理的是"能否"的问题（能否完成课程？是否连通？），那么本章要处理的是"最优"的问题——<strong>哪条路径最短？怎样连接总成本最小？</strong></p>
 
@@ -54,7 +85,7 @@
             <strong>本章路线：</strong>Dijkstra（单源正权最短路）→ Floyd（多源最短路）→ Kruskal & Prim（最小生成树）→ 算法对比与选型指南。学完本章，你能解决 LeetCode 上 95% 的最短路径和最小生成树问题。
         </div>
 
-        <h2>Dijkstra：堆优化实现</h2>
+        <h2 id="dijkstra">Dijkstra：堆优化实现</h2>
 
         <p>Dijkstra 算法是单源最短路径问题（从一个源点到所有其他节点的最短距离）的经典解法，前提是图中<strong>没有负权边</strong>。它的核心思想非常优雅：每次从未访问的节点中选出距离源点最近的节点，用它的边去"松弛"其邻居的距离。</p>
 
@@ -93,6 +124,48 @@ def dijkstra(n, edges, start):
             <strong>惰性删除：</strong>你可能注意到 <code>if d > dist[u]: continue</code> 这行。由于同一个节点可能被加入优先队列多次（每次发现更短距离时），pop 出来的可能是"过期"的条目。跳过即可，不需要手动删除——这是 Dijkstra 堆优化版的经典写法。
         </div>
 
+        <figure id="fig-dijkstra">
+            <svg viewBox="0 0 440 220" role="img" aria-label="带权无向图上从 A 出发的 Dijkstra：最终最短路径树为 A-B-C-D，距离分别为 0、1、3、4">
+                <title>Dijkstra 松弛后得到的最短路径树：每条边被“确定”后不再更改</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="12" y="16" font-size="11.5" font-weight="700" fill="#7c2d12">Dijkstra（LC 743 同源）：绿色为最短路径树</text>
+                    <g stroke="#cbd5e1" stroke-width="1.5">
+                        <line x1="70" y1="115" x2="200" y2="50"></line>
+                        <line x1="70" y1="115" x2="200" y2="180"></line>
+                        <line x1="200" y1="50" x2="200" y2="180"></line>
+                        <line x1="200" y1="50" x2="350" y2="115"></line>
+                        <line x1="200" y1="180" x2="350" y2="115"></line>
+                    </g>
+                    <g stroke="#16a34a" stroke-width="3">
+                        <line x1="70" y1="115" x2="200" y2="50"></line>
+                        <line x1="200" y1="50" x2="200" y2="180"></line>
+                        <line x1="200" y1="180" x2="350" y2="115"></line>
+                    </g>
+                    <g font-size="10" fill="#475569" text-anchor="middle">
+                        <text x="128" y="76" fill="#166534" font-weight="700">1</text>
+                        <text x="122" y="154">4</text>
+                        <text x="212" y="120" fill="#166534" font-weight="700">2</text>
+                        <text x="284" y="76">5</text>
+                        <text x="284" y="154" fill="#166534" font-weight="700">1</text>
+                    </g>
+                    <g font-size="12" text-anchor="middle" font-weight="700">
+                        <circle cx="70" cy="115" r="20" fill="#dbeafe" stroke="#3b82f6"></circle><text x="70" y="120" fill="#1e3a8a">A</text>
+                        <circle cx="200" cy="50" r="20" fill="#dbeafe" stroke="#3b82f6"></circle><text x="200" y="55" fill="#1e3a8a">B</text>
+                        <circle cx="200" cy="180" r="20" fill="#dbeafe" stroke="#3b82f6"></circle><text x="200" y="185" fill="#1e3a8a">C</text>
+                        <circle cx="350" cy="115" r="20" fill="#dbeafe" stroke="#3b82f6"></circle><text x="350" y="120" fill="#1e3a8a">D</text>
+                    </g>
+                    <g font-size="10" text-anchor="middle" fill="#1e40af">
+                        <text x="70" y="148">dist 0</text>
+                        <text x="200" y="26">dist 1</text>
+                        <text x="200" y="212">dist 3</text>
+                        <text x="350" y="148">dist 4</text>
+                    </g>
+                    <text x="12" y="208" font-size="10" fill="#475569">虚线边未被采用：A→C 直连 4 大于 A→B→C 的 3；B→D 直连 5 大于 B→C→D 的 4。</text>
+                </g>
+            </svg>
+            <figcaption>Dijkstra 每轮从可信集合外挑出“当前距离最小”的节点并最终确定它——这一步正确的<strong>关键前提是边权非负</strong>：若存在负权边，一个看似已定的距离可能被后来的路径推翻，而算法不会回头修正。灰色虚线是不被采用的候选边，说明“贪心地取当前最近”最终构成一棵最短路径树。</figcaption>
+        </figure>
+
         <h3>例题：网络延迟时间（LeetCode 743）</h3>
 
         <p>题目：n 个网络节点，有向边表示信号传输时间。从节点 k 发送信号，求所有节点都收到信号所需的时间。</p>
@@ -125,7 +198,17 @@ def dijkstra(n, edges, start):
             <strong>常见错误：</strong>Dijkstra 不能处理负权边！如果图中存在负权边，之前"确定"的最短距离可能在后续被更短的路径推翻，但 Dijkstra 不会回头去更新已确定节点。有负权边时请用 Bellman-Ford 或 SPFA。我有个同事在生产环境的路由系统中用了 Dijkstra，结果一条负权链路导致整个网络的路由表出错——幸好测试阶段发现了。
         </div>
 
-        <h2>Floyd 算法：多源最短路</h2>
+        <div class="demo" id="demo-dijkstra">
+            <p><strong>单步演示（Dijkstra 堆优化）：</strong>在图中从 A 出发，逐步观察优先队列弹出的节点与 <code>dist</code> 数组的松弛更新。</p>
+            <div class="demo-controls" role="group" aria-label="Dijkstra 演示控制">
+                <button type="button" id="dj-prev">上一步</button>
+                <button type="button" id="dj-next">下一步</button>
+                <button type="button" id="dj-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="dj-out" role="status" aria-live="polite"></pre>
+        </div>
+
+        <h2 id="floyd">Floyd 算法：多源最短路</h2>
 
         <p>当需要计算<strong>任意两点之间</strong>的最短距离时，可以运行 n 次 Dijkstra（O(n(E+V)logV)），但更简洁的方式是 Floyd 算法（O(V³)）。Floyd 的核心思想是动态规划：<code>dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j])</code>。</p>
 
@@ -186,7 +269,7 @@ def dijkstra(n, edges, start):
             <strong>传递闭包例题：</strong>LeetCode 1462（课程表 IV）——给定先修关系，查询某个课程是否是另一个的先修课。用 Floyd 的传递闭包版本可以一行核心逻辑解决。
         </div>
 
-        <h2>最小生成树：Kruskal 与 Prim</h2>
+        <h2 id="mst">最小生成树：Kruskal 与 Prim</h2>
 
         <p>最小生成树（MST）问题：在无向带权图中找一棵树，连接所有节点且总边权最小。</p>
 
@@ -265,7 +348,7 @@ def dijkstra(n, edges, start):
             <strong>Kruskal vs Prim 选择指南：</strong>图比较稀疏时用 Kruskal（排序边更划算）；图比较稠密时用 Prim（边太多排序不划算）。LeetCode 上 MST 题目通常 n 不大，两种都能过——选你顺手的那一种即可。
         </div>
 
-        <h2>算法对比：选型指南</h2>
+        <h2 id="compare">算法对比：选型指南</h2>
 
         <table>
             <thead>
@@ -316,7 +399,7 @@ def dijkstra(n, edges, start):
             </tbody>
         </table>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <h3>坑1：负权边不能用 Dijkstra</h3>
 
@@ -336,13 +419,61 @@ def dijkstra(n, edges, start):
 
         <p>到此为止，我们走完了图论的核心算法：从图的遍历（DFS/BFS），到拓扑排序和并查集，再到最短路径和最小生成树。下一章我们将暂别图论，进入一个在 LeetCode 上使用频率极高的数据结构——<strong>堆与优先队列</strong>。别看堆的结构简单，它解决的 Top K、数据流中位数、合并有序链表等问题，都是面试中的常客。我们下一章见！</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>算法</th><th>出处（题目号）</th><th>解决的问题 / 前提</th><th>复杂度</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Dijkstra（堆优化）</td><td>743 网络延迟时间</td><td>单源最短路，无负权边</td><td>O((V+E)logV)</td></tr>
+                    <tr><td>Floyd</td><td>1334 阈值距离内邻居最少的城市</td><td>多源最短路，可含负权边（无负环）</td><td>O(V³)</td></tr>
+                    <tr><td>Floyd 传递闭包</td><td>1462 课程表 IV</td><td>可达性判断（布尔矩阵）</td><td>O(V³)</td></tr>
+                    <tr><td>Kruskal</td><td>1584 连接所有点的最小费用</td><td>最小生成树，稀疏图</td><td>O(ElogE)</td></tr>
+                    <tr><td>Prim</td><td>1584（同样可解）</td><td>最小生成树，稠密图</td><td>O((V+E)logV)</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>Dijkstra 的堆优化复杂度为 O((V+E)logV)；本章未展开斐波那契堆等更优实现（常数与工程实践上不一定更实用）。</li>
+            <li>Floyd 的 O(V³) 在 V 较大时会超时，此时应改用对少量源点跑 Dijkstra。</li>
+            <li>演示用的图、边权与 dist 序列均为<strong>教学示意</strong>，不代表官方测试用例。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="16.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
             <a href="18.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var INF = '∞';
+    var states = [
+        { d: [0, INF, INF, INF], msg: '初始化：dist[A]=0，其余 ∞；优先队列 [(0,A)]。' },
+        { d: [0, 1, 4, INF], msg: '弹出 A(0)：松弛邻居 B=1、C=4；入队 (1,B)、(4,C)。' },
+        { d: [0, 1, 3, 6], msg: '弹出 B(1)：松弛 C=1+2=3<4、D=1+5=6；入队更优条目。' },
+        { d: [0, 1, 3, 4], msg: '弹出 C(3)：松弛 D=3+1=4<6；入队 (4,D)。' },
+        { d: [0, 1, 3, 4], msg: '弹出 D(4)：完成。所有节点已确定，返回 dist=[0,1,3,4]。' }
+    ];
+    var names = ['A', 'B', 'C', 'D'];
+    var out = document.getElementById('dj-out'), cur = 0;
+    function render(k) {
+        k = Math.max(0, Math.min(k, states.length - 1)); cur = k;
+        var st = states[k], rows = [];
+        for (var i = 0; i < names.length; i++) rows.push(names[i] + '=' + st.d[i]);
+        out.textContent = '   dist：' + rows.join('   ') + '\n\n第 ' + k + '/' + (states.length - 1) + ' 步：' + st.msg;
+    }
+    render(0);
+    document.getElementById('dj-next').addEventListener('click', function () { render(cur + 1); });
+    document.getElementById('dj-prev').addEventListener('click', function () { render(cur - 1); });
+    document.getElementById('dj-reset').addEventListener('click', function () { render(0); });
+})();
+</script>
 </body>
 </html>
