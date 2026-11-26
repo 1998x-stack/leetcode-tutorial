@@ -5,11 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第26章 竞赛思维 - LeetCode 教程</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端的布局兜底：不依赖外部样式表也能不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x, .eq-scroll, [data-math-scroll] { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>💻 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 数组与哈希表</a></li>
@@ -41,10 +56,27 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>从面试到竞赛的思维跃迁</h2>
+        <h1>竞赛思维：在有限时间里做最优决策</h1>
+        <p class="lede">周赛的难度不在于会不会写算法，而在于 90 分钟内怎么分配时间、怎么判断该不该跳过、怎么从答案反推。本章把“读题信号 → 算法族”的映射、四道题的时间预算、逆向思维与十类常见陷阱整理成可反复对照的清单。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#intro">从面试到竞赛的思维跃迁</a></li>
+                <li><a href="#weekly">周赛实战策略</a></li>
+                <li><a href="#thinking">思维技巧</a></li>
+                <li><a href="#traps">常见竞赛陷阱</a></li>
+                <li><a href="#construct">序列与构造题</a></li>
+                <li><a href="#traps10">十类陷阱速查表</a></li>
+                <li><a href="#pitfalls">踩坑与总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="intro">从面试到竞赛的思维跃迁</h2>
 
         <p>同学们好，走到第26章，意味着你已经系统性地学完了 LeetCode 上绝大多数的核心算法和数据结构。此时此刻，你刷过的题应该已经有几百道了，常见的套路基本都见过了。但你有没有发现——有些人参加 LeetCode 周赛，四道题一个小时就 AK（All Kill）了；而你吭哧吭哧做两个半小时，第三道题可能还没调出来？</p>
 
@@ -54,7 +86,7 @@
             <strong>重要认知：</strong>竞赛思维不是天赋，而是可以训练的方法论。它包含四个维度——读题策略、时间管理、逆向思维、陷阱识别。每一条都能通过刻意练习提升。
         </div>
 
-        <h2>周赛实战策略</h2>
+        <h2 id="weekly">周赛实战策略</h2>
 
         <p>LeetCode 双周赛/周赛每场四个题，时长 90 分钟。怎么分配时间？我总结了一套"三分钟读题法"。</p>
 
@@ -114,7 +146,43 @@
             <strong>时间管理口诀：</strong>Q1 求稳，Q2 求快，Q3 求突破，Q4 求缘分。不要在一道题上死磕超过 30 分钟——那不是坚持，是愚蠢。
         </div>
 
-        <h2>思维技巧</h2>
+        <figure id="fig-budget">
+            <svg viewBox="0 0 660 250" role="img" aria-label="90 分钟周赛的四题时间预算条：Q1 约 8 分钟、Q2 约 15 分钟、Q3 约 22 分钟、Q4 用剩余约 45 分钟；单题 30 分钟处置一条止损线，越过就应先跳去做其他题">
+                <title>周赛四题的时间预算与止损线</title>
+                <rect x="0" y="0" width="660" height="250" fill="#fffbf5"/>
+                <text x="330" y="26" text-anchor="middle" font-size="13" fill="#7c2d12">90 分钟周赛：四题时间预算（时长为教学示意）</text>
+                <g font-size="12" text-anchor="end" fill="#7c2d12">
+                    <text x="122" y="71">Q1 · Easy</text>
+                    <text x="122" y="107">Q2 · Medium</text>
+                    <text x="122" y="143">Q3 · Med~Hard</text>
+                    <text x="122" y="179">Q4 · Hard</text>
+                </g>
+                <rect x="130" y="54" width="43" height="26" rx="6" fill="#dcfce7" stroke="#16a34a"/>
+                <text x="151" y="72" text-anchor="middle" font-size="11" fill="#166534">~8min</text>
+                <rect x="130" y="90" width="80" height="26" rx="6" fill="#e0f2fe" stroke="#0ea5e9"/>
+                <text x="170" y="108" text-anchor="middle" font-size="11" fill="#075985">~15min</text>
+                <rect x="130" y="126" width="117" height="26" rx="6" fill="#ffedd5" stroke="#f97316"/>
+                <text x="188" y="144" text-anchor="middle" font-size="11" fill="#9a3412">~22min</text>
+                <rect x="130" y="162" width="240" height="26" rx="6" fill="#fee2e2" stroke="#ef4444"/>
+                <text x="250" y="180" text-anchor="middle" font-size="11" fill="#991b1b">剩余时间 ~45min（能写多少写多少）</text>
+                <line x1="290" y1="44" x2="290" y2="200" stroke="#b91c1c" stroke-width="1.5" stroke-dasharray="5 4"/>
+                <text x="296" y="40" font-size="11" fill="#b91c1c">单题 30 分钟止损线</text>
+                <text x="330" y="224" text-anchor="middle" font-size="12" fill="#475569">越过止损线仍未突破，先跳去做其他题，把稳拿的分先锁进口袋。</text>
+            </svg>
+            <figcaption>四题共用一条 90 分钟时间轴，<strong>越靠后的题预留的容错越小</strong>：Q1/Q2 是基本盘，Q3/Q4 才是拉开差距的地方，但前提是前两题不再返工。图中各题的分钟数是<strong>教学示意</strong>，用于说明相对权重。真正的规则是那条红色虚线——它提醒你：卡在同一道题上的每一分钟，都是从其他题借来的。</figcaption>
+        </figure>
+
+        <div class="demo" id="demo-budget">
+            <p><strong>四题节奏卡：</strong>点“下一步”逐题查看“目标”与“越线后的动作”。</p>
+            <div class="demo-controls" role="group" aria-label="周赛时间预算演示控制">
+                <button type="button" id="budget-next">下一步</button>
+                <button type="button" id="budget-prev">上一步</button>
+                <button type="button" id="budget-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="budget-out" role="status" aria-live="polite"></pre>
+        </div>
+
+        <h2 id="thinking">思维技巧</h2>
 
         <p>竞赛中最值钱的不是你会多少算法，而是你能不能想到<strong>那个关键的转折点</strong>。下面三个思维技巧是我的压箱底存货。</p>
 
@@ -180,7 +248,7 @@
 
         <p>增量构造的关键在于：<strong>不追求一步到位，而是每一步都推进一点点，最终自然得到全局解</strong>。这在贪心算法中也广泛使用。</p>
 
-        <h2>常见竞赛陷阱</h2>
+        <h2 id="traps">常见竞赛陷阱</h2>
 
         <p>掌握了技巧，还要避免踩坑。竞赛中的 Bug 很多时候不是算法设计问题，而是<strong>对环境的不熟悉</strong>。</p>
 
@@ -233,7 +301,7 @@ def dfs_iterative(graph, start):
             <strong>调试建议：</strong>周赛中如果某个测试用例 TLE 了，不要傻看代码。先加一个 <code>if len(nums) &gt; 10000: return -1</code> 之类的快速判断来缩小问题范围，再针对性优化。
         </div>
 
-        <h2>序列与构造题</h2>
+        <h2 id="construct">序列与构造题</h2>
 
         <p>构造题是竞赛中的常客，但在面试中比较少出现。这类题目考验的是你<strong>对数学规律的敏感度</strong>。</p>
 
@@ -294,7 +362,7 @@ def spiral_order(matrix):
 
         <p>方向向量法是模拟题的"万能钥匙"。不管题目是走迷宫、螺旋矩阵、还是机器人行走，一个方向数组 + 边界检查 + 转向逻辑就能搞定几乎所有情况。</p>
 
-        <h2>竞赛中10种常见陷阱及应对</h2>
+        <h2 id="traps10">竞赛中 10 种常见陷阱及应对</h2>
 
         <table>
             <thead>
@@ -373,7 +441,7 @@ def spiral_order(matrix):
             <strong>最可怕的陷阱：</strong>读错题。我见过太多人——包括我自己——在竞赛中花 40 分钟写了一个"解法"，最后发现题目读反了（比如求最大值看成最小值）。我的习惯是：在写代码之前，用<strong>自己的话把题目复述一遍</strong>，或者在纸上画个样例，确认理解无误再动手。
         </div>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <p>说到踩坑，我必须分享一个印象深刻的故事。有一次 LeetCode 周赛，Q4 是一道 Hard 题，我读了 10 分钟完全没思路，然后开始死磕。30 分钟过去了，我写了各种尝试代码，都不对。45 分钟过去了，我还在挣扎。最终 90 分钟结束，我的 Q4 一分没拿到，而且 Q2 和 Q3 也因为时间不够写得毛毛躁躁，各错了一个 corner case——<strong>总排名掉了 1000 名</strong>。</p>
 
@@ -389,13 +457,53 @@ def spiral_order(matrix):
 
         <p>下一章，我们将进入一个更宏观的话题：<strong>刷题策略与系统规划</strong>。我们将从"竞赛"的紧张节奏中退出来，从更高的视角审视整条 LeetCode 学习路线——如何高效刷题、如何对抗遗忘、如何制定个性化的刷题计划。你会发现，刷题不是比数量，而是比体系。</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>技巧</th><th>示例题目 / 出处</th><th>机制</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>二分答案（判定转求值）</td><td>LeetCode 875 Koko Eating Bananas</td><td>验证函数单调，二分搜索答案空间</td></tr>
+                    <tr><td>前缀和 + 哈希</td><td>LeetCode 560 和为 K 的子数组</td><td>用 prefix−k 的计数反推区间</td></tr>
+                    <tr><td>增量构造 / 交替换位</td><td>LeetCode 1470 Shuffle the Array</td><td>双指针同步推进</td></tr>
+                    <tr><td>方向向量模拟</td><td>LeetCode 54 螺旋矩阵</td><td>dr/dc 方向数组 + 越界时转向</td></tr>
+                    <tr><td>输入规模 → 算法族</td><td>竞赛通用经验</td><td><strong>教学启发式</strong>，非严格判据</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>四题时间预算与“30 分钟止损线”是<strong>教学示意</strong>，实际分配取决于个人熟练度与题目难度。</li>
+            <li>“输入规模 → 算法族”只是经验启发式，存在大量例外；具体仍需回到题目约束推导。</li>
+            <li>示例代码为教学片段，假定输入满足题目描述中的约束，未展开全部边界处理。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="25.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
             <a href="27.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var steps = [
+        'Q1 · Easy（~8 分钟）\n目标：快速拿下，用最直接的写法，不炫技。\n越线动作：若 10 分钟还没过，先写暴力保底。',
+        'Q2 · Medium（~15 分钟）\n目标：核心得分点，严谨推导 + 边界稳一点。\n越线动作：先确认题意是否读准，再决定继续还是跳过。',
+        'Q3 · Medium~Hard（~22 分钟）\n目标：拉开差距的地方，尝试突破。\n越线动作：若 15 分钟无思路，先跳 Q4 看一眼再回来。',
+        'Q4 · Hard（剩余时间）\n目标：能做就做，不能做就写暴力拿部分分。\n越线动作：不会写暴力就果断放弃，回去把 Q2/Q3 复查一遍。'
+    ];
+    var pos = 0, out = document.getElementById('budget-out');
+    function render() { out.textContent = steps[pos] + '\n\n进度 ' + (pos + 1) + '/' + steps.length; }
+    document.getElementById('budget-next').addEventListener('click', function () { if (pos < steps.length - 1) { pos++; render(); } });
+    document.getElementById('budget-prev').addEventListener('click', function () { if (pos > 0) { pos--; render(); } });
+    document.getElementById('budget-reset').addEventListener('click', function () { pos = 0; render(); });
+    render();
+})();
+</script>
 </body>
 </html>
