@@ -5,11 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第28章 综合项目：刷题平台 - LeetCode 教程</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端的布局兜底：不依赖外部样式表也能不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x, .eq-scroll, [data-math-scroll] { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>💻 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 数组与哈希表</a></li>
@@ -41,10 +56,26 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html" class="active">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>项目概述：打造你的刷题大脑</h2>
+        <h1>综合项目：做一个自己的刷题平台</h1>
+        <p class="lede">最后一章不再刷题，而是把前面 27 章的能力收拢成一个可展示的作品：一个个人刷题追踪系统。我们从需求、数据模型、REST API、认证，一路做到复习计划生成与扩展方向，并回顾整门课的知识地图。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#intro">项目概述</a></li>
+                <li><a href="#features">核心功能设计</a></li>
+                <li><a href="#model">数据模型设计</a></li>
+                <li><a href="#arch">前端与后端架构</a></li>
+                <li><a href="#extend">扩展思考</a></li>
+                <li><a href="#summary">课程总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="intro">项目概述：打造你的刷题大脑</h2>
 
         <p>同学们好，欢迎来到最后一章——也是整个课程中最特别的一章。前面的 27 章我们学习了各种算法、数据结构、面试技巧和竞赛策略。但你有没有想过一个问题：<strong>你用来记录和追踪这些知识本身的工具，是不是也应该被好好设计一下？</strong></p>
 
@@ -54,7 +85,7 @@
             <strong>项目定位：</strong>这不是一个"玩具项目"。一个设计良好的刷题追踪系统，可以成为你面试时展示系统设计能力、全栈开发能力、数据库设计能力和产品思维的活生生的案例。很多面试官看到这种项目都会感兴趣——"哎，这个你自己做的？说说你怎么设计的？"
         </div>
 
-        <h2>核心功能设计</h2>
+        <h2 id="features">核心功能设计</h2>
 
         <p>我们先从需求出发。一个刷题平台需要解决什么问题？</p>
 
@@ -72,18 +103,81 @@
 
         <h3>功能四：复习计划</h3>
 
-        <p>系统根据遗忘曲线自动生成复习计划。比如你 6 月 15 日做了某道题，系统会自动安排 6 月 16 日、6 月 18 日、6 月 22 日、7 月 6 日……的复习提醒。复习时系统给你看题目标题和你的笔记，你回忆解法，然后点击"记得"或"忘了"来更新下一次复习时间。</p>
+        <p>系统根据遗忘曲线自动生成复习计划。比如你 6 月 15 日做了某道题,系统会自动安排 6 月 16 日、6 月 18 日、6 月 22 日、7 月 6 日......的复习提醒。复习时系统给你看题目标题和你的笔记,你回忆解法，然后点击“记得”或“忘了”来更新下一次复习时间。</p>
+
+        <div class="demo" id="demo-review">
+            <p><strong>复习排期演示：</strong>以 2026-06-15 完成某题为例，点“下一步”查看系统按间隔重复生成的复习日期。</p>
+            <div class="demo-controls" role="group" aria-label="复习计划生成演示控制">
+                <button type="button" id="review-next">下一步</button>
+                <button type="button" id="review-prev">上一步</button>
+                <button type="button" id="review-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="review-out" role="status" aria-live="polite"></pre>
+        </div>
 
         <div class="tip">
             <strong>一个差异化功能：</strong>在刷题记录中加入<strong>"思路类型"</strong>字段——比如"逆向思维"、"增量构造"、"二分答案"、"状态压缩"。当你积累了 50 条记录后，你可以按思路类型来筛选——看看自己哪些思维模式用得最多，哪些完全没用过。这能帮你发现自己思维上的盲区。
         </div>
 
-        <h2>数据模型设计</h2>
+        <h2 id="model">数据模型设计</h2>
 
         <p>我们用最简洁的数据库设计来支撑上述功能。下面是一个关系型数据库（PostgreSQL / MySQL）的表设计。</p>
 
+        <figure id="fig-er">
+            <svg viewBox="0 0 660 340" role="img" aria-label="数据模型实体关系图：problems 通过 problem_tags 与 tags 多对多关联，submissions 与 review_schedule 各自以其 problem_id 外键引用 problems">
+                <title>刷题系统的核心表关系</title>
+                <rect x="0" y="0" width="660" height="340" fill="#fffbf5"/>
+                <text x="330" y="26" text-anchor="middle" font-size="13" fill="#7c2d12">刷题系统的核心表与关系（多对多用中间表拆开）</text>
+                <g font-size="11">
+                    <rect x="30" y="46" width="180" height="78" rx="10" fill="#fff7ed" stroke="#f97316"/>
+                    <rect x="30" y="46" width="180" height="24" rx="10" fill="#fed7aa" stroke="#f97316"/>
+                    <text x="120" y="63" text-anchor="middle" font-weight="700" fill="#7c2d12">problems</text>
+                    <text x="42" y="87" fill="#7c2d12">id (PK) · leetcode_id</text>
+                    <text x="42" y="104" fill="#7c2d12">title · difficulty · url</text>
+                    <rect x="240" y="46" width="180" height="78" rx="10" fill="#fff7ed" stroke="#f97316"/>
+                    <rect x="240" y="46" width="180" height="24" rx="10" fill="#fed7aa" stroke="#f97316"/>
+                    <text x="330" y="63" text-anchor="middle" font-weight="700" fill="#7c2d12">problem_tags</text>
+                    <text x="252" y="87" fill="#7c2d12">problem_id (FK)</text>
+                    <text x="252" y="104" fill="#7c2d12">tag_id (FK)</text>
+                    <rect x="450" y="46" width="180" height="78" rx="10" fill="#fff7ed" stroke="#f97316"/>
+                    <rect x="450" y="46" width="180" height="24" rx="10" fill="#fed7aa" stroke="#f97316"/>
+                    <text x="540" y="63" text-anchor="middle" font-weight="700" fill="#7c2d12">tags</text>
+                    <text x="462" y="87" fill="#7c2d12">id (PK)</text>
+                    <text x="462" y="104" fill="#7c2d12">name (UNIQUE)</text>
+                    <rect x="30" y="210" width="250" height="104" rx="10" fill="#fff7ed" stroke="#f97316"/>
+                    <rect x="30" y="210" width="250" height="24" rx="10" fill="#fed7aa" stroke="#f97316"/>
+                    <text x="155" y="227" text-anchor="middle" font-weight="700" fill="#7c2d12">submissions</text>
+                    <text x="42" y="251" fill="#7c2d12">id (PK) · problem_id (FK)</text>
+                    <text x="42" y="268" fill="#7c2d12">user_id · solved_at · duration_min</text>
+                    <text x="42" y="285" fill="#7c2d12">solution_summary · had_hint</text>
+                    <text x="42" y="302" fill="#7c2d12">code_url · error_type</text>
+                    <rect x="380" y="210" width="250" height="104" rx="10" fill="#fff7ed" stroke="#f97316"/>
+                    <rect x="380" y="210" width="250" height="24" rx="10" fill="#fed7aa" stroke="#f97316"/>
+                    <text x="505" y="227" text-anchor="middle" font-weight="700" fill="#7c2d12">review_schedule</text>
+                    <text x="392" y="251" fill="#7c2d12">id (PK) · problem_id (FK)</text>
+                    <text x="392" y="268" fill="#7c2d12">user_id · scheduled_date</text>
+                    <text x="392" y="285" fill="#7c2d12">status (pending/completed/skipped)</text>
+                    <text x="392" y="302" fill="#7c2d12">reviewed_at</text>
+                </g>
+                <g stroke="#ea580c" stroke-width="1.6" fill="none">
+                    <line x1="210" y1="85" x2="240" y2="85"/>
+                    <line x1="420" y1="85" x2="450" y2="85"/>
+                    <line x1="90" y1="124" x2="90" y2="210"/>
+                    <line x1="180" y1="124" x2="180" y2="170" /><line x1="180" y1="170" x2="470" y2="170"/><line x1="470" y1="170" x2="470" y2="210"/>
+                </g>
+                <g font-size="10" fill="#9a3412" text-anchor="middle">
+                    <text x="225" y="79">1:N</text>
+                    <text x="435" y="79">N:1</text>
+                    <text x="112" y="172">1:N</text>
+                    <text x="325" y="165">1:N</text>
+                </g>
+            </svg>
+            <figcaption>刷题系统的数据模型可以看成<strong>一中心、两翼</strong>：<code>problems</code> 是中心，<code>problem_tags</code> 把“题 ↔ 标签”的多对多拆成两个一对多，<code>submissions</code> 与 <code>review_schedule</code> 则各自通过 <code>problem_id</code> 外键挂在中心上。把多对多拆开、把错误类型结构化，是后续“按标签统计正确率”和“复习日历”这类聚合查询能写出来的前提——这也是本章想顺带复习的<strong>哈希/集合思维</strong>在数据库层面的对应物。</figcaption>
+        </figure>
+
         <h3>核心表结构</h3>
 
+        <div class="scroll-x">
         <table>
             <thead>
                 <tr>
@@ -130,6 +224,7 @@
                 </tr>
             </tbody>
         </table>
+        </div>
 
         <pre><code>-- 建表 SQL 示例（核心表）
 CREATE TABLE problems (
@@ -179,12 +274,13 @@ CREATE TABLE review_schedule (
             <strong>设计考量：</strong>这里把 <code>user_id</code> 直接作为外键引用，但实际项目中你会有一个独立的 <code>users</code> 表。<code>error_type</code> 字段是错题本的关键——一定要结构化数据，不要用自由文本填，否则后续统计非常困难。建议使用枚举值：<code>思路错误</code>、<code>边界遗漏</code>、<code>代码bug</code>、<code>超时</code>、<code>无错误</code>。
         </div>
 
-        <h2>前端与后端架构</h2>
+        <h2 id="arch">前端与后端架构</h2>
 
         <h3>RESTful API 设计</h3>
 
         <p>后端采用经典的三层架构：Controller → Service → Repository。下面列出核心 API 端点：</p>
 
+        <div class="scroll-x">
         <table>
             <thead>
                 <tr>
@@ -236,6 +332,7 @@ CREATE TABLE review_schedule (
                 </tr>
             </tbody>
         </table>
+        </div>
 
         <h3>用户认证</h3>
 
@@ -280,7 +377,7 @@ def login():
             <strong>技术选型建议：</strong>前端可以用 React + Chart.js（轻量级图表库）或 TailwindCSS 快速搭建 UI；后端可以用 Python Flask/FastAPI 或 Node.js Express；数据库用 PostgreSQL。如果你想快速出原型，甚至可以用 Python 的 Dash 或 Streamlit——但如果你是为了给面试官看，选主流技术栈（React + FastAPI + PostgreSQL）更稳妥。
         </div>
 
-        <h2>扩展思考</h2>
+        <h2 id="extend">扩展思考</h2>
 
         <p>基础版本做完了，如果你还有时间和精力，这里有三个有价值的扩展方向。</p>
 
@@ -332,7 +429,7 @@ def generate_daily_reviews(user_id):
             <strong>技术选型：</strong>定时任务可以用 Celery（Python）或 cron 作业实现。通知系统可以用 Telegram Bot API，免费且简单——十几行代码就能搞定。
         </div>
 
-        <h2>课程总结</h2>
+        <h2 id="summary">课程总结</h2>
 
         <p>好了，到这里我们整个 LeetCode 教程的 28 章就全部结束了。让我带你们回顾一下这一路走来的旅程。</p>
 
@@ -399,13 +496,54 @@ def generate_daily_reviews(user_id):
 
         <p>江湖再见，祝大家 offer 多多！</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>设计点</th><th>依据 / 出处</th><th>可靠性说明</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>核心表与关系</td><td>本章设计的关系模型</td><td>教学实现示例，可按需裁剪</td></tr>
+                    <tr><td>多对多用中间表拆开</td><td>关系数据库范式化的标准做法</td><td>经典实践</td></tr>
+                    <tr><td>复习间隔</td><td>参见第 27 章的间隔重复讨论</td><td>课程内部引用；排期为<strong>教学示意</strong></td></tr>
+                    <tr><td>LeetCode GraphQL 接口</td><td>community 反向工程（非官方公开 API）</td><td>接口可能随时变动</td></tr>
+                    <tr><td>REST API 端点清单</td><td>本章设计</td><td>教学示例，非完整规范</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>建表 SQL、API 端点与认证伪代码均为<strong>教学示例</strong>，未展开分页、限流、鉴权中间件与完整错误处理。</li>
+            <li>复习日期示例（如 2026-06-15 起）来自本章正文的<strong>教学示意</strong>；实际排期应由策略与完成情况动态决定。</li>
+            <li>LeetCode 的 GraphQL 接口属于社区反向工程，非官方公开 API，随时可能变更。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="27.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
-            <a href="javascript:void(0)">下一章 →</a>
+            <span class="cite">已是最后一章</span>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var steps = [
+        '2026-06-15　完成题目：写入一条 submission（solved_at = 2026-06-15）。',
+        '第 1 次复习：2026-06-16（完成次日）',
+        '第 2 次复习：2026-06-18',
+        '第 3 次复习：2026-06-22',
+        '第 4 次复习：2026-07-06（间隔逐次拉长，用更少的次数锁住记忆）'
+    ];
+    var pos = 0, out = document.getElementById('review-out');
+    function render() { out.textContent = steps[pos] + '\n\n进度 ' + (pos + 1) + '/' + steps.length; }
+    document.getElementById('review-next').addEventListener('click', function () { if (pos < steps.length - 1) { pos++; render(); } });
+    document.getElementById('review-prev').addEventListener('click', function () { if (pos > 0) { pos--; render(); } });
+    document.getElementById('review-reset').addEventListener('click', function () { pos = 0; render(); });
+    render();
+})();
+</script>
 </body>
 </html>
