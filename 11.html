@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第11章 贪心算法</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端兜底：不依赖外部样式表也不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
@@ -41,10 +56,25 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>贪心思想 — 局部最优 → 全局最优</h2>
+        <h1>贪心算法：局部最优何时能累积成全局最优</h1>
+        <p class="lede">贪心最危险的地方不是写不出来，而是<strong>以为自己写对了</strong>。本章用区间调度、跳跃游戏两个系列说明“贪心策略长什么样”，再把重心放在本章真正的主角：<strong>如何判断一个贪心选择是否安全</strong>——要么能证明，要么能给出反例。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#idea">贪心思想</a></li>
+                <li><a href="#interval">区间调度</a></li>
+                <li><a href="#jump">跳跃游戏系列</a></li>
+                <li><a href="#others">其他经典贪心</a></li>
+                <li><a href="#pitfalls">踩坑与总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="idea">贪心思想 — 局部最优 → 全局最优</h2>
 
         <p>大家好，我是你们的讲师。今天我们来聊聊贪心算法——一种非常"任性"的算法。说它任性，是因为<strong>贪心算法从不在"未来"做规划，它只在每一个当下做看起来最好的选择</strong>。然后神奇的是，有时候这些局部最优累积起来，恰好就是全局最优。</p>
 
@@ -60,7 +90,7 @@
             <strong>贪心使用前提：</strong>一个问题能用贪心解决，意味着该问题具有<strong>最优子结构</strong>（全局最优包含局部最优）和<strong>贪心选择性质</strong>（局部最优选择不会影响全局最优的实现）。这两个性质在数学上需要严格证明——但在 LeetCode 面试中，更多是靠经验和直觉来判断。
         </div>
 
-        <h2>区间调度</h2>
+        <h2 id="interval">区间调度</h2>
 
         <p>区间调度是贪心算法最经典的应用场景之一。核心思路：<strong>每次选择结束时间最早的区间</strong>，这样能给后面的区间留出最大空间。</p>
 
@@ -84,6 +114,33 @@
     return len(intervals) - count</code></pre>
 
         <p>贪心策略的证明：按结束时间排序后，第一个结束的区间一定属于某个最优解——因为如果最优解的第一个区间不是最早结束的，我们可以用最早结束的那个替换它，结果不会变差。这就是"贪心选择性质"的典型证明思路。</p>
+
+        <figure id="fig-interval">
+            <svg viewBox="0 0 440 210" role="img" aria-label="按结束时间排序后依次贪心选择不重叠区间：选中 A 与 C，跳过 B 与 D">
+                <title>区间调度：按结束时间排序，只要 start ≥ 上一个 end 就选入</title>
+                <defs>
+                    <marker id="a11" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#0369a1"></path></marker>
+                </defs>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="12" y="16" font-size="11.5" font-weight="700" fill="#7c2d12">区间调度（LC 435）：按结束时间排序，最早结束优先</text>
+                    <text x="20" y="55" font-size="10" fill="#166534">A [1,3]</text>
+                    <rect x="124" y="44" width="68" height="16" rx="4" fill="#dcfce7" stroke="#16a34a"></rect>
+                    <text x="20" y="77" font-size="10" fill="#991b1b">B [2,5]</text>
+                    <rect x="158" y="66" width="102" height="16" rx="4" fill="#f1f5f9" stroke="#cbd5e1"></rect>
+                    <text x="20" y="99" font-size="10" fill="#166534">C [4,6]</text>
+                    <rect x="226" y="88" width="68" height="16" rx="4" fill="#dcfce7" stroke="#16a34a"></rect>
+                    <text x="20" y="121" font-size="10" fill="#991b1b">D [5,8]</text>
+                    <rect x="260" y="110" width="102" height="16" rx="4" fill="#f1f5f9" stroke="#cbd5e1"></rect>
+                    <line x1="90" y1="136" x2="400" y2="136" stroke="#94a3b8"></line>
+                    <g font-size="9" fill="#64748b" text-anchor="middle">
+                        <text x="90" y="150">0</text><text x="124" y="150">1</text><text x="158" y="150">2</text><text x="192" y="150">3</text><text x="226" y="150">4</text><text x="260" y="150">5</text><text x="294" y="150">6</text><text x="328" y="150">7</text><text x="362" y="150">8</text>
+                    </g>
+                    <text x="12" y="176" font-size="10" fill="#334155">选 A（end=3）→ B 的 start 2 &lt; 3 跳过 → C 的 start 4 ≥ 3 选入（end=6）→ D 的 start 5 &lt; 6 跳过</text>
+                    <text x="12" y="194" font-size="10" fill="#475569">结果保留 2 个不重叠区间。已按结束时间排序是“最早结束优先”的必要前提。</text>
+                </g>
+            </svg>
+            <figcaption>区间调度的贪心为什么安全：<strong>按结束时间排序</strong>后，最早结束的那个区间一定可以放进某个最优解。因为任何最优解里占据时间最早的那个区间，其结束时间不早于它；把那个区间换成最早结束的，只会给后面留出更多空间。于是“选最早结束的”不降低最优值，这就是<strong>贪心选择性质</strong>。注意 435 用 <code>start &gt;= end</code>（相接不算重叠），452 用 <code>start &gt; end</code>（相接可共箭）——差别只在等号。</figcaption>
+        </figure>
 
         <h3>用最少箭引爆气球（LeetCode 452）</h3>
 
@@ -110,7 +167,17 @@
             <strong>区间调度心法：</strong>遇到区间重叠问题，第一反应是按<strong>结束时间排序</strong>。这是区间贪心的"万能起手式"。少数情况会按开始时间排序（如合并区间 56），但绝大多数区间贪心都以"最早结束"为贪心策略。
         </div>
 
-        <h2>跳跃游戏系列</h2>
+        <div class="demo" id="demo-interval">
+            <p><strong>单步演示（无重叠区间 LC 435）：</strong>已按结束时间排序的区间 A[1,3]、B[2,5]、C[4,6]、D[5,8]，逐步观察“start ≥ 上一个 end 就选入”的贪心判定。</p>
+            <div class="demo-controls" role="group" aria-label="区间调度演示控制">
+                <button type="button" id="iv-prev">上一步</button>
+                <button type="button" id="iv-next">下一步</button>
+                <button type="button" id="iv-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="iv-out" role="status" aria-live="polite"></pre>
+        </div>
+
+        <h2 id="jump">跳跃游戏系列</h2>
 
         <p>跳跃游戏是贪心算法中"思维方式最精妙"的一类题目。</p>
 
@@ -159,7 +226,7 @@
 
         <p>这里有一个很微妙的点：为什么不是每次到最远位置了才跳？因为<strong>每一跳的决策是由"在上一跳范围内选择下一跳的起点"决定的</strong>。你不需要在每一跳的起点做"跳还是不跳"的决策——你只需要在这个范围内选一个能跳得最远的点作为下一跳的起点。</p>
 
-        <h2>其他经典贪心</h2>
+        <h2 id="others">其他经典贪心</h2>
 
         <h3>分发饼干（LeetCode 455）</h3>
 
@@ -191,7 +258,7 @@
             <strong>贪心的陷阱：</strong>监控二叉树是一道"看似能用 DP 但贪心更优"的题目。很多人在做这道题时会试图用树形 DP，但代码会非常复杂。而贪心方案——后序遍历 + 三个状态标记——代码简洁且高效。但前提是你能证明"父节点装监控一定不差于子节点装监控"这个贪心策略的正确性。不能证明的话，<strong>千万不要在面试中贸然使用贪心</strong>，否则被追问证明会很尴尬。
         </div>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <h3>坑 1：贪心证明的重要性</h3>
 
@@ -266,13 +333,64 @@
 
         <p>贪心算法的"任性"有其限度——它只能在具有贪心选择性质的问题上施展拳脚。当局部最优不等于全局最优时，我们需要更强大的工具：<strong>动态规划</strong>。下一章我们将进入动态规划的世界，那是算法面试中最重要、也最需要练习的一章。准备好了吗？我们下一章见！</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>问题</th><th>出处（题目号）</th><th>贪心策略</th><th>复杂度</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>无重叠区间</td><td>435 无重叠区间</td><td>按结束时间排序，取不相交</td><td>O(n log n)</td></tr>
+                    <tr><td>引爆气球</td><td>452 用最少数量的箭引爆气球</td><td>按结束时间排序，取相接可共箭</td><td>O(n log n)</td></tr>
+                    <tr><td>跳跃游戏</td><td>55 跳跃游戏</td><td>维护最远可达 max_reach</td><td>O(n) / O(1)</td></tr>
+                    <tr><td>跳跃游戏 II</td><td>45 跳跃游戏 II</td><td>分层遍历，逐层更新边界</td><td>O(n) / O(1)</td></tr>
+                    <tr><td>分发饼干</td><td>455 分发饼干</td><td>双指针，小胃口优先</td><td>O(n log n)</td></tr>
+                    <tr><td>加油站</td><td>134 加油站</td><td>累计油量，亏空则起点复位</td><td>O(n) / O(1)</td></tr>
+                    <tr><td>监控二叉树</td><td>968 监控二叉树</td><td>后序 + 三状态，父节点优先装</td><td>O(n) / O(h)</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>贪心的正确性依赖“贪心选择性质”的可证：本章只给出区间调度的替换式论证思路，其他题目给出直觉而非完整证明，实战中请自行构造反例验证。</li>
+            <li>复杂度中的 h 是树高；968 的后序递归在链状树上仍可能触发 Python 默认约 1000 层的 RecursionError。</li>
+            <li>图中区间与演示序列均为<strong>教学示意</strong>，不代表官方测试用例。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="10.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
             <a href="12.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var ivs = [['A', 1, 3], ['B', 2, 5], ['C', 4, 6], ['D', 5, 8]];
+    var states = [
+        { end: 3, kept: ['A'], msg: '初始化：已按结束时间排序。选 A（end=3），当前 end=3。' },
+        { end: 3, kept: ['A'], msg: 'B[2,5]：start 2 < end 3 → 跳过（与 A 重叠）。' },
+        { end: 6, kept: ['A', 'C'], msg: 'C[4,6]：start 4 ≥ 3 → 选入，当前 end 更新为 6。' },
+        { end: 6, kept: ['A', 'C'], msg: 'D[5,8]：start 5 < end 6 → 跳过。结果：保留 2 个，需移除 4-2=2 个。' }
+    ];
+    var out = document.getElementById('iv-out'), cur = 0;
+    function render(k) {
+        k = Math.max(0, Math.min(k, states.length - 1)); cur = k;
+        var st = states[k], rows = [];
+        for (var i = 0; i < ivs.length; i++) {
+            var sel = st.kept.indexOf(ivs[i][0]) >= 0;
+            rows.push('  ' + ivs[i][0] + ' [' + ivs[i][1] + ',' + ivs[i][2] + ']  ' + (sel ? '✔ 保留' : '✘ 移除'));
+        }
+        out.textContent = rows.join('\n') + '\n\n第 ' + k + '/' + (states.length - 1) + ' 步：' + st.msg;
+    }
+    render(0);
+    document.getElementById('iv-next').addEventListener('click', function () { render(cur + 1); });
+    document.getElementById('iv-prev').addEventListener('click', function () { render(cur - 1); });
+    document.getElementById('iv-reset').addEventListener('click', function () { render(0); });
+})();
+</script>
 </body>
 </html>
