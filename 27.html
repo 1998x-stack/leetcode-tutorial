@@ -5,11 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第27章 刷题策略与系统规划 - LeetCode 教程</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端的布局兜底：不依赖外部样式表也能不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x, .eq-scroll, [data-math-scroll] { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>💻 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 数组与哈希表</a></li>
@@ -41,10 +56,26 @@
             <li><a href="27.html" class="active">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>刷了100题还是感觉不会？那是方法不对</h2>
+        <h1>刷题策略：把“题量”换成“体系”</h1>
+        <p class="lede">刷得多不等于掌握。本章给出可执行的刷题方法：五遍刷题法逐遍拆目标，用间隔重复对抗遗忘曲线，用错题本沉淀教训，再以一道股票买卖题演示“一题多解”，最后落到按目标公司的刷题计划。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#intro">刷了很多题却还是不会</a></li>
+                <li><a href="#five">五遍刷题法</a></li>
+                <li><a href="#forgetting">遗忘曲线与复习策略</a></li>
+                <li><a href="#multi">一题多解</a></li>
+                <li><a href="#plan">制定个人刷题计划</a></li>
+                <li><a href="#pitfalls">踩坑与总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="intro">刷了 100 题还是感觉不会？那是方法不对</h2>
 
         <p>同学们好，你可能经历过这样的挫败感：每天刷两三道题，刷了三四个月，LeetCode 上显示"已解 350 题"。但打开一场周赛，Q2 还是卡住；面试面了一道"Medium 原题"，你居然想不出最优解。于是你开始怀疑自己的智商——"我是不是不适合写代码？"</p>
 
@@ -54,7 +85,7 @@
             <strong>残酷的真相：</strong>刷题数和面试通过率的相关性远比你想象的低。我辅导过的学员中，有人刷了 800 题还在挂面试，有人只刷了 120 题就拿到了大厂 offer。差别在于后者会<strong>建立知识体系</strong>，而前者只是在<strong>堆砌题量</strong>。
         </div>
 
-        <h2>五遍刷题法</h2>
+        <h2 id="five">五遍刷题法</h2>
 
         <p>我强烈推荐的刷题方法，来自 Google 前工程师、LeetCode 著名答主"耗子叔"的"五遍刷题法"的改进版本。核心思想：<strong>一道好题至少做五遍，每一遍的目标不同</strong>。</p>
 
@@ -92,9 +123,55 @@
             <strong>高效实践：</strong>五遍刷题法不是让你每一道题都刷五遍。把题目分为三档——<strong>S 级</strong>（经典高频，如 Two Sum、LRU Cache）、<strong>A 级</strong>（中频但套路典型）、<strong>B 级</strong>（偏题怪题）。S 级五遍全做，A 级做到第三遍，B 级一遍带过即可。
         </div>
 
-        <h2>遗忘曲线与复习策略</h2>
+        <div class="demo" id="demo-five">
+            <p><strong>五遍目标卡：</strong>点“下一步”逐遍查看“这一遍要达成什么”。</p>
+            <div class="demo-controls" role="group" aria-label="五遍刷题法演示控制">
+                <button type="button" id="five-next">下一步</button>
+                <button type="button" id="five-prev">上一步</button>
+                <button type="button" id="five-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="five-out" role="status" aria-live="polite"></pre>
+        </div>
 
-        <p>德国心理学家艾宾浩斯有一个著名的<strong>遗忘曲线</strong>：学完一个知识后，20 分钟后遗忘 42%，1 小时后遗忘 56%，1 天后遗忘 74%，1 周后遗忘 77%。应用到刷题场景，就是——你刷完一道题如果不复习，一周后你大概率只记得"我做过这道题"，但完全想不起解法细节。</p>
+        <h2 id="forgetting">遗忘曲线与复习策略</h2>
+
+        <p>德国心理学家艾宾浩斯有一个著名的<strong>遗忘曲线</strong>:学完一个知识后,20 分钟后遗忘 42%,1 小时后遗忘 56%,1 天后遗忘 74%,1 周后遗忘 77%。应用到刷题场景，就是——你刷完一道题如果不复习，一周后你大概率只记得“我做过这道题”，但完全想不起解法细节。</p>
+
+        <figure id="fig-curve">
+            <svg viewBox="0 0 660 300" role="img" aria-label="遗忘曲线与间隔重复示意：每次复习后记忆保持率回到接近满值，随后再次衰减，但复习间隔从 1 天逐步拉长到 3 天、7 天、14 天">
+                <title>遗忘曲线与间隔重复</title>
+                <rect x="0" y="0" width="660" height="300" fill="#fffbf5"/>
+                <text x="330" y="24" text-anchor="middle" font-size="13" fill="#7c2d12">遗忘曲线与间隔重复（形状为教学示意）</text>
+                <line x1="70" y1="44" x2="70" y2="250" stroke="#94a3b8"/>
+                <line x1="70" y1="250" x2="620" y2="250" stroke="#94a3b8"/>
+                <text x="62" y="48" text-anchor="end" font-size="11" fill="#64748b">100%</text>
+                <text x="62" y="151" text-anchor="end" font-size="11" fill="#64748b">50%</text>
+                <text x="62" y="254" text-anchor="end" font-size="11" fill="#64748b">0%</text>
+                <text x="18" y="150" font-size="11" fill="#64748b" transform="rotate(-90 18 150)">记忆保持率</text>
+                <text x="345" y="278" text-anchor="middle" font-size="11" fill="#64748b">时间 →</text>
+                <g fill="none" stroke="#f97316" stroke-width="2.5">
+                    <path d="M70,44 Q86,136.7 150,136.7"/>
+                    <path d="M150,44 Q172,122.3 260,122.3"/>
+                    <path d="M260,44 Q290,105.8 410,105.8"/>
+                    <path d="M410,44 Q442,93.4 570,93.4"/>
+                    <path d="M570,44 Q590,70 620,70"/>
+                </g>
+                <g stroke="#0ea5e9" stroke-width="2" stroke-dasharray="5 3">
+                    <line x1="150" y1="136.7" x2="150" y2="44"/>
+                    <line x1="260" y1="122.3" x2="260" y2="44"/>
+                    <line x1="410" y1="105.8" x2="410" y2="44"/>
+                    <line x1="570" y1="93.4" x2="570" y2="44"/>
+                </g>
+                <g font-size="11" text-anchor="middle" fill="#9a3412">
+                    <text x="120" y="266">学完</text>
+                    <text x="205" y="266">+1 天</text>
+                    <text x="335" y="266">+3 天</text>
+                    <text x="490" y="266">+7 天</text>
+                    <text x="595" y="266">+14 天</text>
+                </g>
+            </svg>
+            <figcaption>橙色曲线是<strong>不复习时的记忆衰减</strong>；蓝色虚线是<strong>每次复习把保持率拉回接近满值</strong>。关键不在于“复习得多”，而在于间隔被逐步拉长（1 天 → 3 天 → 7 天 → 14 天），用越来越少的复习次数锁住同样的记忆。曲线形状为<strong>教学示意</strong>，用于展示“先快后慢”的衰减趋势与复习重置的机制，不代表具体数值。章节正文引用的艾宾浩斯百分比则来自该项经典实验。</figcaption>
+        </figure>
 
         <p>怎么对抗遗忘？两个工具：<strong>间隔重复</strong>和<strong>错题本</strong>。</p>
 
@@ -143,7 +220,7 @@
             <strong>不要过度管理：</strong>错题本不是让你当展览馆的。不要花大量时间把笔记做得花里胡哨（画图、排版、截图）。核心是：<strong>记录下来，定期回看</strong>。如果记了笔记但再也没翻开过，那就是在骗自己。
         </div>
 
-        <h2>一题多解：从暴力到最优的思维训练</h2>
+        <h2 id="multi">一题多解：从暴力到最优的思维训练</h2>
 
         <p>一题多解是锻炼思维广度的最好方法。我们来看一个经典例子——<strong>Best Time to Buy and Sell Stock（LeetCode 121）</strong>：给定股票价格数组，最多交易一次，求最大利润。</p>
 
@@ -187,7 +264,7 @@
             <strong>练习建议：</strong>每周选 2-3 道题，强制自己写出至少两种解法。在代码注释里标注每种解法的时间/空间复杂度。坚持下去，一个月后你会发现自己看问题的角度明显开阔了。
         </div>
 
-        <h2>制定个人刷题计划</h2>
+        <h2 id="plan">制定个人刷题计划</h2>
 
         <p>没有计划地刷题就像没有地图的旅行——你可能走了很远，但到不了想去的地方。来，我们做一个实际的刷题规划。</p>
 
@@ -269,7 +346,7 @@
             <strong>一个实用工具：</strong>LeetCode 的"Company Tag"功能（付费版）可以按公司查看高频题。如果你有明确的目标公司，这是最高效的刷题策略——因为每个公司的高频题池其实很小（100-200 道），把这些题吃透，面试中的原题概率非常高。
         </div>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <p>最后来聊聊一个很多人困惑的问题：<strong>"我刷了 500 题了，为什么还是不会？"</strong> 我帮你拆解一下，常见的原因有四个：</p>
 
@@ -289,13 +366,54 @@
 
         <p>下一章，也是本课程的最后一章，我们将做一个<strong>综合项目：设计一个个人刷题平台</strong>。把你在本课程中学到的所有知识——数据结构、算法、系统设计——整合到一个完整的项目中。这不仅是一个复习所有章节的机会，更是你拿给面试官看的实打实的作品。我们最后一章见！</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>本章的说法</th><th>依据 / 出处</th><th>可靠性说明</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>五遍刷题法</td><td>刷题社区流传的方法论，本章为改进版重述</td><td>经验方法，非唯一正解</td></tr>
+                    <tr><td>遗忘曲线百分比</td><td>Ebbinghaus（1885）经典记忆实验的常用引用</td><td>经典结论，不同来源表述略有差异</td></tr>
+                    <tr><td>间隔重复 1/3/7/14 天</td><td>通用间隔重复实践</td><td><strong>教学示意</strong>排期</td></tr>
+                    <tr><td>一题多解三相解法</td><td>LeetCode 121 Best Time to Buy and Sell Stock</td><td>暴力 O(n²)、一次遍历 O(n)、Kadane 变形</td></tr>
+                    <tr><td>按公司高频题量与方向</td><td>刷题社区经验汇总</td><td><strong>教学示意</strong>，非官方考纲与数据</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>遗忘曲线的具体百分比是经典实验的常用引用，个体差异与材料类型都会影响实际衰减速度。</li>
+            <li>间隔重复排期、刷题量区间与公司重点方向均为<strong>教学示意</strong>，应结合自身进度调整，不是硬性标准。</li>
+            <li>“一题多解”的三种写法均假定输入满足题目约束；Kadane 写法利用“负收益时归零”，仅适用于本题的“最多一次交易”模型。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="26.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
             <a href="28.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var steps = [
+        '第一遍 · 暴力解与学习\n目标：先写一个能过的版本；不会就看题解，理解后关掉再自己写。\n收获：知道这道题属于哪个知识点。',
+        '第二遍 · 优化\n目标：写出最优解，并分析时空复杂度。\n收获：能把思路口头讲清楚（“核心是……选这个结构的理由是……”）。',
+        '第三遍 · 隔天重做\n目标：不看旧代码，15–20 分钟内独立 AC。\n收获：暴露“以为懂了”的 corner case 与边界之差。',
+        '第四遍 · 一题多解\n目标：用至少两种完全不同的方法解同一道题。\n收获：应对“能不能换个思路/内存不够怎么办”。',
+        '第五遍 · 周回顾\n目标：一周后回看，5 秒内说出每题的套路与最优复杂度。\n收获：把“分类能力”内化成条件反射。'
+    ];
+    var pos = 0, out = document.getElementById('five-out');
+    function render() { out.textContent = steps[pos] + '\n\n进度 ' + (pos + 1) + '/' + steps.length; }
+    document.getElementById('five-next').addEventListener('click', function () { if (pos < steps.length - 1) { pos++; render(); } });
+    document.getElementById('five-prev').addEventListener('click', function () { if (pos > 0) { pos--; render(); } });
+    document.getElementById('five-reset').addEventListener('click', function () { pos = 0; render(); });
+    render();
+})();
+</script>
 </body>
 </html>
