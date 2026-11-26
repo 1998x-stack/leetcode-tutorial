@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第3章 栈与队列</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端兜底：不依赖外部样式表也不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
@@ -41,10 +56,25 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>栈与队列的底层实现</h2>
+        <h1>栈与队列：LIFO/FIFO 的两个基本承诺</h1>
+        <p class="lede">栈与队列本身很简单，难的是<strong>在合适的地方用对的那个</strong>。本章从循环队列的实现细节出发，用括号匹配与逆波兰表达式说明“栈为什么能处理嵌套”，再用单调栈把“下一个更大元素”从 O(n²) 降到 O(n)，最后展示如何用一个结构模拟另一个。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#basics">栈与队列的底层实现</a></li>
+                <li><a href="#paren">括号匹配与表达式计算</a></li>
+                <li><a href="#mono">单调栈进阶</a></li>
+                <li><a href="#queue">队列的特殊应用</a></li>
+                <li><a href="#pitfalls">踩坑与总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="basics">栈与队列的底层实现</h2>
 
         <p>大家好，我是你们的讲师。今天我们来聊聊栈（Stack）和队列（Queue）——可能是整个数据结构体系中最"亲民"的两种结构。但千万别小看它们，<strong>栈和队列是很多复杂算法的基础构件</strong>：递归调用栈、BFS 队列、单调栈、消息队列……这些概念追根溯源都回到这两个简单的结构。</p>
 
@@ -95,7 +125,7 @@
 
         <p>注意 <code>(self.tail - 1) % self.capacity</code> 这个取模操作——因为 tail 指向的是下一个空位，所以队尾元素实际上是 tail 的前一个位置。取模保证了指针在数组范围内循环移动。</p>
 
-        <h2>括号匹配与表达式计算</h2>
+        <h2 id="paren">括号匹配与表达式计算</h2>
 
         <p>栈在括号匹配问题中的应用堪称经典。这类问题的本质是：<strong>遇到左括号就入栈，遇到右括号就检查栈顶是否匹配</strong>。</p>
 
@@ -115,6 +145,16 @@
     return not stack</code></pre>
 
         <p>这段代码容易出错的地方是：当遇到右括号时，如果栈为空就直接返回 False。有人会写成 <code>stack.pop() != pairs[ch] and not stack</code>——顺序错了！先检查栈是否为空再 pop，这是必须遵守的安全原则。</p>
+
+        <div class="demo" id="demo-paren">
+            <p><strong>单步演示（有效的括号 LC 20）：</strong>输入 <code>"([{}])"</code>，逐步观察栈的推入与弹出。左括号入栈，右括号与栈顶比对后弹出，最终栈空则合法。</p>
+            <div class="demo-controls" role="group" aria-label="括号匹配演示控制">
+                <button type="button" id="pa-prev">上一步</button>
+                <button type="button" id="pa-next">下一步</button>
+                <button type="button" id="pa-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="pa-out" role="status" aria-live="polite"></pre>
+        </div>
 
         <h3>逆波兰表达式求值（LeetCode 150）</h3>
 
@@ -144,7 +184,7 @@
             <strong>关键认知：</strong>逆波兰表达式是栈的完美匹配——运算符栈天然解决了运算符优先级问题。如果你需要自己实现中缀表达式求值（比如实现一个计算器），第一步就是把中缀表达式转为逆波兰表达式（Shunting Yard 算法）。
         </div>
 
-        <h2>单调栈进阶</h2>
+        <h2 id="mono">单调栈进阶</h2>
 
         <p>单调栈（Monotonic Stack）是栈的进阶应用——<strong>栈中的元素保持单调递增或递减</strong>。它的作用是快速找到数组中每个元素左边或右边第一个比它大/小的元素。</p>
 
@@ -166,6 +206,40 @@
     return ans</code></pre>
 
         <p>核心逻辑：当新温度高于栈顶温度时，说明栈顶元素的下一个更高温度出现了，弹出并计算结果。栈中始终保持递减——这就是<strong>单调栈的维护原则</strong>。</p>
+
+        <figure id="fig-mono">
+            <svg viewBox="0 0 440 200" role="img" aria-label="单调递减栈求下一个更高温度：新温度 72 来到时弹出栈顶的 71，得到答案">
+                <title>单调递减栈：新元素比栈顶高，就弹出并结算栈顶的下一个更大元素</title>
+                <defs>
+                    <marker id="a3" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#0369a1"></path></marker>
+                </defs>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="12" y="18" font-size="11.5" font-weight="700" fill="#7c2d12">每日温度（LC 739）：栈里存下标，温度单调递减</text>
+                    <text x="12" y="40" font-size="10.5" fill="#334155">数组 temperatures = [73, 74, 75, 71, 72]（教学示意数组）</text>
+                    <g stroke="#94a3b8" fill="#f1f5f9">
+                        <rect x="20" y="52" width="52" height="34" rx="6"></rect>
+                        <rect x="76" y="52" width="52" height="34" rx="6"></rect>
+                        <rect x="132" y="52" width="52" height="34" rx="6"></rect>
+                        <rect x="188" y="52" width="52" height="34" rx="6"></rect>
+                        <rect x="244" y="52" width="52" height="34" rx="6" stroke="#ea580c" fill="#ffedd5"></rect>
+                    </g>
+                    <g font-size="11" text-anchor="middle" fill="#334155">
+                        <text x="46" y="73">73</text><text x="102" y="73">74</text><text x="158" y="73">75</text><text x="214" y="73">71</text><text x="270" y="73" fill="#9a3412" font-weight="700">72</text>
+                    </g>
+                    <g font-size="9" text-anchor="middle" fill="#64748b">
+                        <text x="46" y="98">i=0</text><text x="102" y="98">i=1</text><text x="158" y="98">i=2</text><text x="214" y="98">i=3</text><text x="270" y="98">i=4←</text>
+                    </g>
+                    <rect x="330" y="48" width="96" height="44" rx="8" fill="#eff6ff" stroke="#3b82f6"></rect>
+                    <text x="378" y="64" font-size="10" text-anchor="middle" fill="#1e3a8a" font-weight="700">当前栈（底→顶）</text>
+                    <text x="378" y="82" font-size="10.5" text-anchor="middle" fill="#1e40af">[ i=2 (75), i=3 (71) ]</text>
+                    <text x="12" y="130" font-size="10.5" fill="#334155">新温度 72 来到：72 &gt; 栈顶 71 → 弹出 i=3，答案 ans[3] = 4 − 3 = 1</text>
+                    <text x="12" y="150" font-size="10.5" fill="#334155">再比栈顶 75：72 &lt; 75 → 停止，把 i=4 入栈（栈恢复递减）</text>
+                    <text x="12" y="176" font-size="10" fill="#475569">每枚下标最多入栈一次、出栈一次 → 整体 O(n)；遍历结束时仍留在栈中的元素答案为 0。</text>
+                    <text x="12" y="192" font-size="10" fill="#64748b">数组取值与栈快照为“已作简化”的教学示意。</text>
+                </g>
+            </svg>
+            <figcaption>单调栈的<strong>弹出时机</strong>就是它解决问题的地方：当新元素比栈顶大（对递增/递减方向的定义而定）时，栈顶元素“往右第一个更大元素”当下就确定了，于是可以立即弹出并结算。栈保持单调，因此每个元素只会被压入、弹出各一次，总代价 <strong>O(n)</strong>。这也是为什么栈里存的是<strong>下标</strong>：答案需要下标之差来当“距离”。</figcaption>
+        </figure>
 
         <h3>柱状图中最大的矩形（LeetCode 84）</h3>
 
@@ -191,7 +265,7 @@
             <strong>易错点：</strong>单调栈中存的是下标而不是值！很多人一上来写 <code>stack.append(heights[i])</code>，然后发现无法计算宽度——因为宽度需要两个下标之差。记住：<strong>栈存下标，通过数组取值</strong>。
         </div>
 
-        <h2>队列的特殊应用</h2>
+        <h2 id="queue">队列的特殊应用</h2>
 
         <p>栈和队列虽然底层结构不同，但可以通过某种方式互相模拟。</p>
 
@@ -252,7 +326,7 @@
             <strong>思维拓展：</strong>232 和 225 这两道题看起来像是"为了做题而做题"，但它们实际上教会了你一个重要的抽象能力——<strong>一种数据结构的特性可以通过另一种结构组合来实现</strong>。这种抽象思维在系统设计中无处不在（比如用消息队列实现异步解耦）。
         </div>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <p>说一个我自己的单调栈踩坑故事。有一次写 LeetCode 84（柱状图最大矩形），我自以为理解了单调栈，直接开写，结果一提交就 WA（Wrong Answer）。debug 了半个小时才发现问题：我没有在 heights 末尾加 0。不加 0 的话，如果最后柱子是递增的，栈就永远不会被清空，最后一个柱子的面积就永远算不出来。<strong>这种"哨兵技巧"（Sentinel）在单调栈问题中至关重要</strong>——它确保所有元素最终都能出栈计算面积。</p>
 
@@ -306,13 +380,74 @@
 
         <p>栈和队列是"小而美"的数据结构。下一章我们将进入<strong>双指针技巧</strong>——一个看起来简单、但变化极其丰富的算法模式。双指针本质上是"利用数据的有序性或位置关系来减少循环维度"，掌握它能让你的代码效率提升一个量级。我们下一章见！</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>问题</th><th>出处（题目号）</th><th>核心结构</th><th>复杂度</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>循环队列</td><td>622 设计循环队列</td><td>固定数组 + head/tail 取模 + size 计数</td><td>各操作 O(1)</td></tr>
+                    <tr><td>有效括号</td><td>20 有效的括号</td><td>栈存左括号，右括号比对栈顶</td><td>O(n) / O(n)</td></tr>
+                    <tr><td>逆波兰表达式</td><td>150 逆波兰表达式求值</td><td>操作数栈，遇运算符弹两数</td><td>O(n) / O(n)</td></tr>
+                    <tr><td>下一个更大元素</td><td>496 / 739</td><td>单调递减栈存下标</td><td>O(n) / O(n)</td></tr>
+                    <tr><td>柱状图最大矩形</td><td>84 柱状图中最大的矩形</td><td>单调递增栈 + 末尾哨兵 0</td><td>O(n) / O(n)</td></tr>
+                    <tr><td>用栈实现队列</td><td>232 用栈实现队列</td><td>入队栈 + 出队栈，均摊移动</td><td>均摊 O(1) per op</td></tr>
+                    <tr><td>用队列实现栈</td><td>225 用队列实现栈</td><td>单队列 push 后旋转</td><td>push O(n)，pop/top O(1)</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>“均摊 O(1)”不等于“每次都是 O(1)”：232 的单次 pop 在 out_stack 为空时会一次搬空 in_stack（O(n)），但整个生命周期内每个元素只搬一次。</li>
+            <li>单调栈的方向取决于题目要“下一个更大”还是“下一个更小”，本章统一用递减栈求“更大”；镜像场景只需把比较方向反过来。</li>
+            <li>演示用的括号串与温度数组均为<strong>教学示意</strong>，不代表官方测试用例。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="02.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
             <a href="04.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var s = '([{}])';
+    var pairs = { ')': '(', ']': '[', '}': '{' };
+    var states = [], stack = [], ok = true, i;
+    function snap(st, msg) { states.push({ stack: st.slice(), msg: msg }); }
+    snap(stack, '初始化：栈为空。');
+    for (i = 0; i < s.length && ok; i++) {
+        var ch = s[i];
+        if (pairs[ch]) {
+            if (!stack.length || stack[stack.length - 1] !== pairs[ch]) {
+                snap(stack, '遇到 ' + ch + '：栈顶不匹配（或栈为空）→ 返回 false。');
+                ok = false;
+            } else {
+                stack.pop();
+                snap(stack, '遇到 ' + ch + '：与栈顶 ' + pairs[ch] + ' 匹配，弹出。');
+            }
+        } else {
+            stack.push(ch);
+            snap(stack, '遇到左括号 ' + ch + '：入栈。');
+        }
+    }
+    if (ok) snap(stack, stack.length ? '扫描结束但栈非空 → 返回 false。' : '扫描结束且栈为空 → 返回 true，括号合法。');
+    var out = document.getElementById('pa-out'), cur = 0;
+    function render(k) {
+        k = Math.max(0, Math.min(k, states.length - 1)); cur = k;
+        var st = states[k];
+        out.textContent = '输入：' + s.split('').join(' ') + '\n第 ' + k + '/' + (states.length - 1) + ' 步：' + st.msg + '\n当前栈（底→顶）：' + (st.stack.length ? '[ ' + st.stack.join(' ') + ' ]' : '[ 空 ]');
+    }
+    render(0);
+    document.getElementById('pa-next').addEventListener('click', function () { render(cur + 1); });
+    document.getElementById('pa-prev').addEventListener('click', function () { render(cur - 1); });
+    document.getElementById('pa-reset').addEventListener('click', function () { render(0); });
+})();
+</script>
 </body>
 </html>
