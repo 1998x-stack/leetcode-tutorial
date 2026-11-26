@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第20章 Trie与位运算</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端兜底：不依赖外部样式表也不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
@@ -41,10 +56,25 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>Trie前缀树</h2>
+        <h1>Trie 与位运算：把“前缀”和“二进制位”变成结构</h1>
+        <p class="lede">Trie 与位运算看似无关，却共享同一个技巧：<strong>把字符串/数字的逐位信息组织成一棵树，从而让“比较”变成“沿路径行走”</strong>。本章先建 Trie（前缀树），再用异或的自反性把“只出现一次”降到一个变量，最后把二者合体——二进制 Trie 求最大异或。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#trie">Trie 前缀树</a></li>
+                <li><a href="#xor">异或的性质</a></li>
+                <li><a href="#bits">位运算技巧</a></li>
+                <li><a href="#combo">Trie 与异或结合</a></li>
+                <li><a href="#pitfalls">踩坑与总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="trie">Trie前缀树</h2>
 
         <p>大家好。欢迎来到第20章。今天我们把两个看似不相关、但组合起来威力巨大的话题放在一起讲——<strong>Trie 前缀树</strong>和<strong>位运算</strong>。Trie 是处理字符串前缀匹配的高效数据结构，而位运算是操作二进制位的底层技巧。当 Trie 遇上异或（XOR），会产生令人惊叹的化学反应，我们会在最后一道题中看到这一点。</p>
 
@@ -95,6 +125,39 @@
             <strong>字典 vs 数组：</strong>字典实现方便扩展（可以处理任意字符），数组实现更快更省内存。如果确定字符集只有 'a'-'z'，用 <code>[None] * 26</code> 是最佳选择。Python 中还可以用 <code>defaultdict</code> 来简化代码。
         </div>
 
+        <figure id="fig-trie">
+            <svg viewBox="0 0 440 210" role="img" aria-label="单词 cat、car、dog 构成的 Trie：共享前缀 ca 只存一份，深色节点标记单词结尾">
+                <title>Trie：公共前缀只存一份，从根到标注节点的路径就是单词</title>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="12" y="16" font-size="11.5" font-weight="700" fill="#7c2d12">Trie 前缀树：插入 cat、car、dog</text>
+                    <g stroke="#94a3b8" stroke-width="1.5">
+                        <line x1="45" y1="105" x2="90" y2="64"></line>
+                        <line x1="45" y1="105" x2="90" y2="146"></line>
+                        <line x1="120" y1="60" x2="165" y2="60"></line>
+                        <line x1="195" y1="56" x2="245" y2="34"></line>
+                        <line x1="195" y1="64" x2="245" y2="86"></line>
+                        <line x1="120" y1="150" x2="165" y2="150"></line>
+                        <line x1="195" y1="154" x2="245" y2="146"></line>
+                    </g>
+                    <g font-size="11" text-anchor="middle" font-weight="700">
+                        <circle cx="30" cy="105" r="15" fill="#e2e8f0" stroke="#64748b"></circle><text x="30" y="109" fill="#334155">∅</text>
+                        <circle cx="105" cy="105" r="15" fill="#dbeafe" stroke="#3b82f6"></circle><text x="105" y="109" fill="#1e3a8a">c</text>
+                        <circle cx="180" cy="60" r="15" fill="#dbeafe" stroke="#3b82f6"></circle><text x="180" y="64" fill="#1e3a8a">a</text>
+                        <circle cx="260" cy="30" r="15" fill="#dcfce7" stroke="#16a34a"></circle><text x="260" y="34" fill="#166534">t</text>
+                        <circle cx="260" cy="90" r="15" fill="#dcfce7" stroke="#16a34a"></circle><text x="260" y="94" fill="#166534">r</text>
+                        <circle cx="105" cy="150" r="15" fill="#dbeafe" stroke="#3b82f6"></circle><text x="105" y="154" fill="#1e3a8a">d</text>
+                        <circle cx="180" cy="150" r="15" fill="#dbeafe" stroke="#3b82f6"></circle><text x="180" y="154" fill="#1e3a8a">o</text>
+                        <circle cx="260" cy="150" r="15" fill="#dcfce7" stroke="#16a34a"></circle><text x="260" y="154" fill="#166534">g</text>
+                    </g>
+                    <text x="300" y="34" font-size="10" fill="#166534">cat ✓</text>
+                    <text x="300" y="94" font-size="10" fill="#166534">car ✓</text>
+                    <text x="300" y="154" font-size="10" fill="#166534">dog ✓</text>
+                    <text x="12" y="192" font-size="10" fill="#475569">“ca” 这个公共前缀只存一份：search(前缀) 只需沿路径走，不命中即剪枝。</text>
+                </g>
+            </svg>
+            <figcaption>Trie 把“公共前缀”变成<strong>共享的路径</strong>：插入 cat、car 时，c→a 这段只建一次，只有在分叉处才新建节点。于是查询一个前缀就是“从根沿字符往下走”，走得通就存在、走不通就剪枝——这正是 212 中把 Trie 当作 DFS 向导的原因。绿色节点用 <code>is_end</code> 标记“到这里构成一个完整单词”，区分“前缀存在”与“单词存在”（即 <code>search</code> 与 <code>startsWith</code> 的区别）。</figcaption>
+        </figure>
+
         <h3>单词搜索 II（LeetCode 212）</h3>
 
         <p>这是一道非常有代表性的<strong>Trie + 回溯</strong>综合题。给定一个字母矩阵和一个单词列表，找出所有在矩阵中能通过相邻字母拼出的单词。如果每个单词单独做 DFS，时间复杂度是 <code>O(单词数 × 4^L)</code>，在大数据量下不可接受。用 Trie 可以把所有单词组织成前缀树，在 DFS 过程中同时匹配所有单词——一旦当前路径不是任何单词的前缀，立即剪枝。</p>
@@ -134,7 +197,7 @@
 
         <p>这个解法的核心优化是：<strong>把 Trie 当作 DFS 的"向导"</strong>——每走一步都要检查当前前缀是否在 Trie 中，不存在就立即返回。这大幅减少了搜索空间。</p>
 
-        <h2>异或的性质</h2>
+        <h2 id="xor">异或的性质</h2>
 
         <p>聊完 Trie，我们进入位运算的世界。位运算操作的是二进制位，速度极快，是优化代码的终极武器。在所有位运算中，<strong>异或（XOR，^）</strong>是最常用也最有趣的一个。</p>
 
@@ -152,7 +215,7 @@
             <strong>核心模型：</strong>异或是一个"无进位加法"。理解这一点对你做位运算题目很有帮助。<code>1 ^ 1 = 0</code>（1+1=2，二进制进位后本位为 0），<code>1 ^ 0 = 1</code>（1+0=1，无进位）。这个视角在理解"两数之和不用加法"时非常有用。
         </div>
 
-        <h2>位运算技巧</h2>
+        <h2 id="bits">位运算技巧</h2>
 
         <h3>只出现一次的数字（LeetCode 136）</h3>
 
@@ -212,7 +275,17 @@
 
         <p>状态转移方程：<code>dp[i] = dp[i >> 1] + (i & 1)</code>。比如 <code>dp[5]</code>：5 的二进制是 101，<code>5 >> 1 = 2</code>（二进制 10，有 1 个 1），再加最低位 <code>5 & 1 = 1</code>，结果 <code>dp[5] = dp[2] + 1 = 2</code>。非常巧妙，而且只需 <code>O(n)</code> 时间和 <code>O(1)</code> 额外空间（不算答案数组的话）。</p>
 
-        <h2>Trie与异或结合</h2>
+        <div class="demo" id="demo-xor">
+            <p><strong>单步演示（只出现一次的数字 LC 136）：</strong>nums = [4,1,2,1,2]，逐步累加异或，观察出现两次的数如何相互抵消。</p>
+            <div class="demo-controls" role="group" aria-label="异或演示控制">
+                <button type="button" id="xr-prev">上一步</button>
+                <button type="button" id="xr-next">下一步</button>
+                <button type="button" id="xr-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="xr-out" role="status" aria-live="polite"></pre>
+        </div>
+
+        <h2 id="combo">Trie与异或结合</h2>
 
         <h3>数组中两个数的最大异或值（LeetCode 421）</h3>
 
@@ -266,7 +339,7 @@
             <strong>思维模型：</strong>"两个数异或最大"等价于"在 Trie 中为每个数寻找相反位最多的数"。记住这个"贪心 + Trie"的范式，它也可以用来解决"最大与"或"最大或"的问题，只需要改造 Trie 的查找策略即可。
         </div>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <h3>Trie 的内存消耗</h3>
 
@@ -327,13 +400,61 @@
 
         <p>好了，Trie 和位运算的内容就到这里。下一章我们将进入一个同样和字符串密切相关的话题——<strong>字符串匹配</strong>。我们会学习 KMP、Rabin-Karp 和字符串哈希等经典算法，它们能帮你高效解决各种"找子串"的问题。我们下一章见！</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>问题</th><th>出处（题目号）</th><th>核心结构 / 技巧</th><th>复杂度</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>实现 Trie</td><td>208 实现 Trie</td><td>字典/数组 children + is_end 标记</td><td>插入/查询 O(L)</td></tr>
+                    <tr><td>单词搜索 II</td><td>212 单词搜索 II</td><td>Trie + 矩阵 DFS 剪枝</td><td>近似 O(格子数 × 4^L)（受剪枝限制）</td></tr>
+                    <tr><td>只出现一次的数字</td><td>136 只出现一次的数字</td><td>全体异或，自反性抵消</td><td>O(n) / O(1)</td></tr>
+                    <tr><td>只出现一次的数字 III</td><td>260 只出现一次的数字 III</td><td>x & (-x) 取最低位 1 分组</td><td>O(n) / O(1)</td></tr>
+                    <tr><td>比特位计数</td><td>338 比特位计数</td><td>dp[i] = dp[i&gt;&gt;1] + (i&amp;1)</td><td>O(n) / O(n)</td></tr>
+                    <tr><td>最大异或值</td><td>421 数组中两个数的最大异或值</td><td>二进制 Trie + 高位贪心</td><td>O(32n) ≈ O(n)</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>421 的 O(n) 建立在“整数固定 32 位”之上；若位数增长（如 64 位），Trie 深度也随之增加。</li>
+            <li>212 的复杂度与矩阵尺寸、单词长度及剪枝效果相关，难以给出简单的紧上界，表中为一个大致的量级估计。</li>
+            <li>Trie 空间开销大：字典实现下每个节点的哈希表开销可观，字符集固定时用数组更省。</li>
+            <li>图中单词集合与演示数组均为<strong>教学示意</strong>，不代表官方测试用例。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="19.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
             <a href="21.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var nums = [4, 1, 2, 1, 2];
+    var states = [], acc = 0;
+    states.push({ acc: 0, msg: '初始化：acc = 0（0 与任何数异或都不变）。' });
+    for (var i = 0; i < nums.length; i++) {
+        acc = acc ^ nums[i];
+        states.push({ acc: acc, msg: 'acc ^= ' + nums[i] + '  →  acc = ' + acc + '。' });
+    }
+    states[states.length - 1].msg += ' 出现两次的 1、2 已互相抵消，剩下 4 就是答案。';
+    var out = document.getElementById('xr-out'), cur = 0;
+    function render(k) {
+        k = Math.max(0, Math.min(k, states.length - 1)); cur = k;
+        var st = states[k], shown = nums.slice(0, k);
+        out.textContent = '已异或：[' + shown.join(', ') + ']\nacc = ' + st.acc + '\n\n第 ' + k + '/' + (states.length - 1) + ' 步：' + st.msg;
+    }
+    render(0);
+    document.getElementById('xr-next').addEventListener('click', function () { render(cur + 1); });
+    document.getElementById('xr-prev').addEventListener('click', function () { render(cur - 1); });
+    document.getElementById('xr-reset').addEventListener('click', function () { render(0); });
+})();
+</script>
 </body>
 </html>
