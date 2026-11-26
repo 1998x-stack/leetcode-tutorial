@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>第14章 区间DP与状态机</title>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* 离线/打印/移动端兜底：不依赖外部样式表也不横向溢出 */
+        main { display: block; min-width: 0; }
+        h1 { font-size: 1.85rem; line-height: 1.35; color: #7c2d12; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 3px solid #f97316; }
+        pre { max-width: 100%; overflow-x: auto; }
+        figure { margin: 20px 0; }
+        figure svg { display: block; width: 100%; height: auto; max-width: 100%; }
+        .scroll-x { overflow-x: auto; max-width: 100%; }
+        .toc { background: #fffbf5; border: 1px solid #fed7aa; border-radius: 16px; padding: 14px 18px; margin: 16px 0; }
+        .demo-controls button { cursor: pointer; font: inherit; font-size: .85rem; padding: 6px 14px; margin: 0 8px 8px 0; border-radius: 999px; border: 1px solid #ea580c; background: #fff; color: #9a3412; font-weight: 600; }
+        .demo-controls button[aria-pressed="true"] { background: #ea580c; color: #fff; }
+        .demo-controls button:focus-visible { outline: 3px solid #0ea5e9; outline-offset: 2px; }
+        .demo-out { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: .88rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+        .cite { font-size: .82rem; color: #64748b; }
+    </style>
 </head>
 <body>
 <div class="double-border">
@@ -41,10 +56,25 @@
             <li><a href="27.html">第27章 刷题策略与系统规划</a></li>
             <li><a href="28.html">第28章 综合项目：刷题平台</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content">
 
-        <h2>区间 DP — 区间长度作为状态维度</h2>
+        <h1>区间 DP 与状态机：状态设计的两个方向</h1>
+        <p class="lede">DP 进阶的难点不在转移方程，而在<strong>状态怎么定义</strong>。本章把两种最常见的状态扩展方式讲透：区间 DP 把状态从“点”扩到“区间”，遍历顺序改为“按长度递增”；状态机 DP 把状态从“单个值”扩到“多个阶段”，把约束编码进状态里。</p>
+
+        <nav class="toc" aria-label="本章导航">
+            <h2>本章导航</h2>
+            <ol>
+                <li><a href="#range">区间 DP</a></li>
+                <li><a href="#stock">股票买卖 — 状态机 DP</a></li>
+                <li><a href="#bitmask">状态压缩 DP</a></li>
+                <li><a href="#tree">树形 DP</a></li>
+                <li><a href="#pitfalls">踩坑与总结</a></li>
+                <li><a href="#refs">结论的出处与局限</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="range">区间 DP — 区间长度作为状态维度</h2>
 
         <p>大家好，我是你们的讲师。欢迎来到第十四章——区间 DP 与状态机。这两个概念看起来不相关，但它们共同代表了 DP 进阶的两个重要方向：一个是<strong>状态维度的扩展</strong>（从单点到区间），一个是<strong>状态内涵的丰富</strong>（从单一值到多状态）。</p>
 
@@ -130,7 +160,7 @@ for length in range(2, n + 1):          # 区间长度
 
         <p>注意区别：当两端字符不同时，子序列问题可以选择"舍弃左边"或"舍弃右边"，取最大值。而子串问题由于连续性限制——两端字符不同就不可能构成回文子串，所以直接标记 False。</p>
 
-        <h2>股票买卖 — 状态机 DP</h2>
+        <h2 id="stock">股票买卖 — 状态机 DP</h2>
 
         <p>股票买卖系列是 LeetCode 上非常经典的<strong>状态机 DP</strong>题目。所谓状态机 DP，就是状态不仅有"第几天"，还有"当前持仓状态"——比如：<strong>持有</strong>还是<strong>不持有</strong>？这个状态维度把所有可能的决策都建模进来了。</p>
 
@@ -186,7 +216,50 @@ for length in range(2, n + 1):          # 区间长度
             <strong>状态机 DP 心法：</strong>画状态转移图！股票问题的状态转移图非常直观：持有 → 卖出 → 冷冻 → 非冷冻 → 买入 → 持有。在图中标注好每个状态转移的"代价"（利润变化），然后把图翻译成代码。我每次做股票题，第一件事都是画状态机图——画清楚了，代码自然就写出来了。
         </div>
 
-        <h2>状态压缩 DP</h2>
+        <figure id="fig-stock">
+            <svg viewBox="0 0 440 220" role="img" aria-label="股票买卖含冷冻期的三状态机：非冷冻不持有、持有、冷冻，三者之间的买入卖出与恢复转移">
+                <title>含冷冻期股票问题（LC 309）的状态转移图</title>
+                <defs>
+                    <marker id="a14" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#0369a1"></path></marker>
+                </defs>
+                <g font-family="system-ui, 'PingFang SC', sans-serif">
+                    <text x="12" y="16" font-size="11.5" font-weight="700" fill="#7c2d12">股票含冷冻期（LC 309）：把约束编码进状态</text>
+                    <g font-size="11" text-anchor="middle" font-weight="700">
+                        <circle cx="80" cy="160" r="30" fill="#dbeafe" stroke="#3b82f6"></circle><text x="80" y="157" fill="#1e3a8a">非冷冻</text><text x="80" y="172" fill="#1e40af">dp[·][0]</text>
+                        <circle cx="220" cy="60" r="30" fill="#fef9c3" stroke="#eab308"></circle><text x="220" y="57" fill="#854d0e">持有</text><text x="220" y="72" fill="#854d0e">dp[·][1]</text>
+                        <circle cx="360" cy="160" r="30" fill="#fee2e2" stroke="#dc2626"></circle><text x="360" y="157" fill="#991b1b">冷冻</text><text x="360" y="172" fill="#991b1b">dp[·][2]</text>
+                    </g>
+                    <g stroke="#0369a1" stroke-width="1.5" fill="none" marker-end="url(#a14)">
+                        <line x1="104" y1="138" x2="196" y2="82"></line>
+                        <line x1="244" y1="82" x2="336" y2="138"></line>
+                        <line x1="330" y1="160" x2="112" y2="160"></line>
+                        <path d="M 60 132 C 30 90, 90 90, 66 132"></path>
+                        <path d="M 195 34 C 175 -10, 265 -10, 245 34"></path>
+                    </g>
+                    <g font-size="10" fill="#334155">
+                        <text x="118" y="102">买入 −p</text>
+                        <text x="258" y="102">卖出 +p</text>
+                        <text x="185" y="176">冷冻恢复（0）</text>
+                        <text x="8" y="100" fill="#64748b">休息（0）</text>
+                        <text x="196" y="14" fill="#64748b">保持（0）</text>
+                    </g>
+                    <text x="12" y="208" font-size="10" fill="#475569">转移：dp[i][0]=max(dp[i-1][0], dp[i-1][2])；dp[i][1]=max(dp[i-1][1], dp[i-1][0]−p)；dp[i][2]=dp[i-1][1]+p</text>
+                </g>
+            </svg>
+            <figcaption>状态机 DP 的做法就是“先把图画对，再把图翻译成代码”。图中三个状态分别对应“今天结束时不持有且不冷冻 / 持有 / 今天刚卖出（冷冻）”；前一个状态里“非冷冻”不能直接买入，必须经“冷冻→非冷冻”恢复一步，因此买入只能从 <code>dp[·][0]</code> 出发。约束一变（如最多交易 k 次），只需追加一维状态，主框架不动。</figcaption>
+        </figure>
+
+        <div class="demo" id="demo-stock">
+            <p><strong>单步演示（含冷冻期股票 LC 309）：</strong>prices = [1,2,3,0,2]，逐步执行状态转移，观察 dp[i][0]（非冷冻不持有）、dp[i][1]（持有）、dp[i][2]（冷冻）各自的取值。</p>
+            <div class="demo-controls" role="group" aria-label="股票状态机演示控制">
+                <button type="button" id="sk-prev">上一步</button>
+                <button type="button" id="sk-next">下一步</button>
+                <button type="button" id="sk-reset">重置</button>
+            </div>
+            <pre class="demo-out" id="sk-out" role="status" aria-live="polite"></pre>
+        </div>
+
+        <h2 id="bitmask">状态压缩 DP</h2>
 
         <p>状态压缩 DP 使用<strong>二进制位</strong>来表示集合状态。当元素个数不超过 20 时（因为 2²⁰ ≈ 10⁶），可以用一个整数的二进制位来表示"哪些元素已经使用过"。</p>
 
@@ -226,7 +299,7 @@ def tsp(dist):
             <strong>使用限制：</strong>状态压缩 DP 的复杂度通常是 O(n² × 2ⁿ) 或 O(n × 2ⁿ)。当 n 超过 20 时，2ⁿ 会超过 10⁶，通常会导致 TLE 或 MLE。所以面试中遇到 n ≤ 16 或 n ≤ 20 的题目，可以立刻想到状态压缩。如果 n > 20，即使想用也大概率不行——这时要寻找其他解法。
         </div>
 
-        <h2>树形 DP — 树上的状态转移</h2>
+        <h2 id="tree">树形 DP — 树上的状态转移</h2>
 
         <p>树形 DP 是 DP 在树结构上的自然延伸。当 DP 的状态在树的节点之间转移时（通常是后序遍历），就形成了树形 DP。</p>
 
@@ -325,7 +398,7 @@ def tsp(dist):
             </tbody>
         </table>
 
-        <h2>踩坑与总结</h2>
+        <h2 id="pitfalls">踩坑与总结</h2>
 
         <h3>坑 1：状态机状态定义混淆</h3>
 
@@ -349,13 +422,67 @@ def tsp(dist):
 
         <p>到这为止，我们完成了动态规划四大分支的学习。下一章我们将开启一个全新的领域——<strong>图论基础</strong>，从图的表示（邻接矩阵 vs 邻接表）到 DFS/BFS 在图上的应用。图论是算法面试的另一个重头戏，也是一个"掌握模板就能解决大部分题目"的领域。我们下一章见！</p>
 
+        <h2 id="refs">结论的出处与局限</h2>
+
+        <div class="scroll-x">
+            <table>
+                <thead>
+                    <tr><th>DP 类型</th><th>出处（题目号）</th><th>状态定义</th><th>遍历顺序 / 复杂度</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>区间 DP（回文子串）</td><td>5 最长回文子串</td><td>dp[i][j]：s[i..j] 是否回文</td><td>按长度递增，O(n²)</td></tr>
+                    <tr><td>区间 DP（回文子序列）</td><td>516 最长回文子序列</td><td>dp[i][j]：区间内最长回文子序列长</td><td>按长度递增，O(n²)</td></tr>
+                    <tr><td>状态机 DP（一次）</td><td>121 买卖股票的最佳时机</td><td>dp[i][0/1]：不持有 / 持有</td><td>线性，O(n)</td></tr>
+                    <tr><td>状态机 DP（冷冻）</td><td>309 买卖股票的最佳时机含冷冻期</td><td>dp[i][0/1/2]：非冷冻 / 持有 / 冷冻</td><td>线性，O(n)</td></tr>
+                    <tr><td>状态压缩 DP</td><td>TSP 模板 / 698</td><td>dp[mask][i]：已访问集合 mask</td><td>O(n²·2ⁿ)</td></tr>
+                    <tr><td>树形 DP</td><td>337 打家劫舍 III</td><td>dfs 返回 (不偷, 偷) 二元组</td><td>后序，O(n)</td></tr>
+                    <tr><td>树形 DP</td><td>124 二叉树中的最大路径和</td><td>返回单边最大贡献 + 全局最大</td><td>后序，O(n)</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>本章的局限：</strong></p>
+        <ul>
+            <li>区间 DP 的 O(n²) 指时间；朴素实现空间也是 O(n²)，可用滚动数组等降维，本章未展开。</li>
+            <li>状态压缩仅在 n ≲ 20 时可行（2ⁿ 规模）；n 大时 2ⁿ 会直接 TLE/MLE。</li>
+            <li>价格序列、状态转移数值与图均为<strong>教学示意</strong>，不代表官方测试用例。</li>
+        </ul>
+
         <div class="footer-nav">
             <a href="13.html">← 上一章</a>
             <a href="index.html">📖 返回目录</a>
             <a href="15.html">下一章 →</a>
         </div>
-    </div>
+    </main>
 </div>
 </div>
+<script>
+(function () {
+    var prices = [1, 2, 3, 0, 2];
+    var rows = [], d0 = 0, d1 = -prices[0], d2 = 0;
+    rows.push([0, d0, d1, d2]);
+    for (var i = 1; i < prices.length; i++) {
+        var p = prices[i];
+        var n0 = Math.max(d0, d2), n1 = Math.max(d1, d0 - p), n2 = d1 + p;
+        d0 = n0; d1 = n1; d2 = n2;
+        rows.push([i, d0, d1, d2]);
+    }
+    var out = document.getElementById('sk-out'), cur = rows.length - 1;
+    function render(k) {
+        k = Math.max(0, Math.min(k, rows.length - 1)); cur = k;
+        var lines = [];
+        for (var r2 = 0; r2 <= k; r2++) {
+            var row = rows[r2];
+            lines.push('  第' + row[0] + '天 p=' + prices[row[0]] + '   dp0=' + row[1] + '   dp1=' + row[2] + '   dp2=' + row[3]);
+        }
+        var tail = (k === rows.length - 1) ? '\n答案 = max(dp0, dp2) = ' + Math.max(rows[k][1], rows[k][3]) : '';
+        out.textContent = lines.join('\n') + '\n\n显示到第 ' + k + '/' + (rows.length - 1) + ' 天：dp0=max(前dp0, 前dp2)；dp1=max(前dp1, 前dp0−p)；dp2=前dp1+p。' + tail;
+    }
+    render(rows.length - 1);
+    document.getElementById('sk-next').addEventListener('click', function () { render(cur + 1); });
+    document.getElementById('sk-prev').addEventListener('click', function () { render(cur - 1); });
+    document.getElementById('sk-reset').addEventListener('click', function () { render(rows.length - 1); });
+})();
+</script>
 </body>
 </html>
