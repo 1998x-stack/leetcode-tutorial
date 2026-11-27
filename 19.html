@@ -139,8 +139,8 @@
                     <text x="208" y="64" text-anchor="middle" font-size="13" fill="#7c2d12"><tspan x="208" y="46" font-size="9" fill="#94a3b8">3</tspan>71</text>
                     <text x="264" y="64" text-anchor="middle" font-size="13" fill="#b91c1c"><tspan x="264" y="46" font-size="9" fill="#94a3b8">4</tspan>69</text>
                     <text x="320" y="64" text-anchor="middle" font-size="13" fill="#166534"><tspan x="320" y="46" font-size="9" fill="#94a3b8">5</tspan>72</text>
-                    <text x="15" y="112" font-size="11.5" fill="#475569">① 下标 0、1、2 依次入栈，栈内值递减：[73, 74, 75]</text>
-                    <text x="15" y="134" font-size="11.5" fill="#475569">② i=3（71）、i=4（69）比栈顶小 → 直接入栈</text>
+                    <text x="15" y="112" font-size="11.5" fill="#475569">① i=0→2：74 弹出 73、75 弹出 74，下标 0、1 答案都为 1</text>
+                    <text x="15" y="134" font-size="11.5" fill="#475569">② i=3（71）、i=4（69）比栈顶 75 小 → 入栈，栈值为递减的 [75, 71, 69]</text>
                     <text x="15" y="156" font-size="11.5" fill="#b91c1c">③ i=5（72）比栈顶 69 大 → 弹出下标 4，答案[4] = 5−4 = 1</text>
                     <text x="15" y="178" font-size="11.5" fill="#7c2d12">④ 72 也比 71 大 → 弹出下标 3，答案[3] = 5−3 = 2</text>
                     <text x="15" y="200" font-size="11.5" fill="#166534">⑤ 72 &lt; 75，停下 → 下标 5 入栈，继续扫描</text>
