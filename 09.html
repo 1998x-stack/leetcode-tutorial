@@ -156,9 +156,10 @@ def postorder(root):
         return []
     res, queue = [], [root]
     while queue:
-        for i in range(len(queue)):
+        level_size = len(queue)      # 先存下本层节点数
+        for i in range(level_size):
             node = queue.pop(0)
-            if i == len(queue):  # 实际上是 i == len(queue_before_pop) - 1
+            if i == level_size - 1:  # 本层最后一个节点
                 res.append(node.val)
             if node.left:
                 queue.append(node.left)
@@ -166,7 +167,7 @@ def postorder(root):
                 queue.append(node.right)
     return res</code></pre>
 
-        <p>不过上面的代码有一个小坑——<code>len(queue)</code> 在循环中变化。更安全的写法是事先用变量保存当前层的长度。这个问题我当年就掉进去过，调试了半天才发现队列长度在循环中被修改了。</p>
+        <p>这里的关键是先用 <code>level_size = len(queue)</code> 把本层节点数存下来。<code>range(level_size)</code> 在循环开始时只计算一次，而 <code>i == level_size - 1</code> 判断的正是“本层最后一个节点”。如果顺手写成 <code>i == len(queue)</code>，判断条件会随着 <code>pop(0)</code> 不断漂移——每弹出一个元素 <code>len(queue)</code> 就减一，<code>i</code> 与它对应的元素早已不是同一个，右视图就会漏值或错位。这个问题我当年就掉进去过，调试了半天才发现队列长度在循环中被修改了。</p>
 
         <div class="warning">
             <strong>常见错误：</strong>在使用 <code>for _ in range(len(queue))</code> 时，Python 的 range 是在循环开始时计算好的——所以即使循环中 queue 的长度变了，range 也不会变。但如果用 <code>for i in range(len(queue))</code> 并在循环中 <code>pop(0)</code>，下标 <code>i</code> 对应的元素就不是你想象的那个了。建议用 <code>for _ in range(len(queue))</code> 这种不关心下标的写法。
