@@ -316,7 +316,7 @@ def dfs_iterative(graph, start):
             <li><strong>贪心构造</strong>——每一步都选当前最优，使得最终结果满足条件。</li>
         </ul>
 
-        <pre><code># 构造一个长度为 n 的排列，使得相邻元素差值的绝对值恰好为 1 或 n-1
+        <pre><code># 构造一个长度为 n 的排列，使相邻元素差的绝对值两两不同（恰好覆盖 1…n−1）
 def construct_array(n):
     # 一个经典构造：头尾交替
     result = []
@@ -330,7 +330,7 @@ def construct_array(n):
     return result
 
 # 示例：n=5 → [1, 5, 2, 4, 3]
-# 相邻差值：4, 3, 2, 1 — 都是 [1, n-1] 内的值</code></pre>
+# 相邻差值：4, 3, 2, 1 — 互不相同，恰好覆盖 1…n−1</code></pre>
 
         <h3>模拟题的高级技巧</h3>
 
